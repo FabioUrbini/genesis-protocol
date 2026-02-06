@@ -48,6 +48,9 @@ export class VoxelGrid {
       return VoxelState.Dead;
     }
     const value = this.data[this.getIndex(x, y, z)];
+    if (value === undefined) {
+      return VoxelState.Dead;
+    }
     return isValidVoxelState(value) ? value : VoxelState.Dead;
   }
 

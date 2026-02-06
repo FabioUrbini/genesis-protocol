@@ -4,6 +4,11 @@
 
 Genesis Protocol is a 3D cellular automaton survival game built with TypeScript and Three.js, running in the browser with WebGL2.
 
+**Key Design Principles:**
+- **Instant Play** - No login required, click and play immediately
+- **Modern Graphics** - Cinematic visuals, NOT basic Minecraft-style cubes
+- **Reactive UX** - Every interaction provides satisfying visual feedback
+
 ---
 
 ## Core Architecture
@@ -66,20 +71,29 @@ Efficient 3D data structure for storing world state.
 
 ### 3. Rendering System (`VoxelRenderer`)
 
-Three.js-based renderer with custom shaders.
+Modern deferred rendering pipeline with cinematic post-processing.
 
-**Techniques:**
-- Greedy meshing algorithm (combines adjacent voxels into larger quads)
-- Custom vertex/fragment shaders for glow effects
-- Frustum culling (only render visible chunks)
+**NOT Minecraft Graphics:**
+- Organic geometry with smooth normal interpolation
+- Marching cubes variant for non-blocky shapes
+- PBR materials (metallic, roughness, emissive)
+- Subsurface scattering for translucent voxels
+
+**Rendering Pipeline:**
+- G-Buffer pass (albedo, normal, material, emission)
+- SSAO (Screen Space Ambient Occlusion)
+- Volumetric lighting and god rays
+- HDR rendering with adaptive exposure
+- Unreal-style bloom with artistic thresholds
+- Color grading via LUT
+- Film grain and chromatic aberration (subtle)
+- FXAA anti-aliasing
+
+**Optimization Techniques:**
+- Greedy meshing (combine adjacent voxels)
+- Frustum culling (visible chunks only)
 - Occlusion culling (skip interior voxels)
-- LOD system for distant chunks
-
-**Shader Features:**
-- Energy-based edge glow
-- Pulse effects for energized voxels
-- Fresnel effect
-- Ambient occlusion approximation
+- LOD morphing for distant chunks
 
 ### 4. Physics System (`PlayerPhysics`)
 
@@ -159,8 +173,9 @@ genesis-protocol/
 | Rendering | Three.js |
 | Physics | Custom (voxel-based) |
 | Audio | Web Audio API |
-| Storage | IndexedDB |
-| Networking | WebSocket (multiplayer) |
+| Storage | IndexedDB (no login needed) |
+| Networking | WebSocket (optional multiplayer) |
+| Post-processing | Three.js EffectComposer |
 
 ---
 
