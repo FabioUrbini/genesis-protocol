@@ -41,7 +41,7 @@ npm test
 
 ## 🎯 Current Implementation Status
 
-### ✅ Completed (Phase 1 - MVP Foundation)
+### ✅ Completed (Phase 2 - Playable Game)
 
 1. **Project Setup**
    - TypeScript with strict mode
@@ -66,66 +66,83 @@ npm test
      - Corruption spread mechanics
    - Still Life detection for optimization
 
-4. **Rendering System**
+4. **Physics System** ⭐ NEW
+   - `PlayerPhysics` class with AABB collision detection
+   - Voxel-based collision with the world
+   - Gravity and jumping mechanics
+   - Energy/oxygen depletion system
+   - Safe zone regeneration (near crystallized voxels)
+   - Death and respawn mechanics
+
+5. **Player System** ⭐ NEW
+   - First-person player entity
+   - WASD movement controls
+   - Mouse look with pointer lock
+   - Sprint and jump mechanics
+   - Energy and oxygen survival mechanics
+   - Smooth camera controls
+
+6. **Rendering System**
    - Three.js-based `VoxelRenderer`
    - Instanced rendering for performance
    - Color-coded voxel states with emissive materials
    - Three-point lighting (ambient, directional, point)
    - Fog and atmospheric effects
 
-5. **Camera Controls**
-   - OrbitControls wrapper
-   - Mouse navigation (rotate, pan, zoom)
-   - Smooth damping
-
-6. **Game Loop**
+7. **Game Loop**
    - Main `Game` class orchestrating all systems
+   - Delta time-based physics updates
+   - Player update integration
    - Configurable CA update interval (default: 2 seconds)
    - FPS counter
-   - UI updates (position, tick count)
+   - Automatic respawn on death
 
-7. **User Interface**
-   - Loading screen
+8. **User Interface** ⭐ ENHANCED
+   - Loading screen with smooth transitions
+   - Instructions overlay with controls
    - Real-time stats display (FPS, position, CA tick)
+   - Energy bar with visual indicator
+   - Oxygen bar with visual indicator
+   - Pointer lock instructions
+   - Help text overlay
    - Keyboard shortcuts:
+     - `W A S D` - Move
+     - `Space` - Jump
+     - `Shift` - Sprint
+     - `Mouse` - Look around
      - `R` - Reset simulation
-     - `1` - Slow CA updates (5 seconds)
-     - `2` - Normal CA updates (2 seconds)
-     - `3` - Fast CA updates (0.5 seconds)
+     - `1 2 3` - CA speed (slow/normal/fast)
+     - `ESC` - Release mouse
 
-### 🔄 In Progress / Future Enhancements
+9. **Web Workers** ⭐ NEW
+   - `CAWorker` for parallel CA computation
+   - `WorkerPool` for managing multiple workers
+   - `CASimulatorWorker` wrapper for easy integration
+   - Message passing infrastructure
+   - Transferable objects for performance
 
-- Web Workers for parallel CA computation
-- Greedy meshing algorithm for better performance
-- Player physics and collision detection
-- Inventory system
+10. **Unit Tests** ⭐ NEW
+    - Comprehensive tests for `VoxelGrid`
+    - Comprehensive tests for `CASimulator`
+    - Test coverage for core systems
+    - Vitest test framework configured
+
+### 🔄 Future Enhancements
+
+- Integrate Web Workers into main game loop
+- Greedy meshing algorithm for better rendering performance
+- Inventory system for resource collection
 - Pattern library (save/load formations)
 - Time manipulation tools
 - Multiple biomes with different rule sets
 - Procedural world generation
 - Resource harvesting mechanics
-- Survival mechanics (energy/oxygen)
+- Advanced rendering (PBR, deferred rendering, post-processing)
+- Frustum and occlusion culling
 
 ## 🏗️ Architecture
 
-```
-src/
-├── core/           # CA engine, voxel data structures
-│   ├── VoxelState.ts
-│   ├── VoxelGrid.ts
-│   ├── Chunk.ts
-│   ├── CARule.ts
-│   └── CASimulator.ts
-├── rendering/      # Three.js rendering, shaders
-│   ├── VoxelRenderer.ts
-│   └── CameraControls.ts
-├── game/           # Game logic, player, progression
-│   └── Game.ts
-├── physics/        # Collision, movement (planned)
-├── ui/             # HUD, inventory, menus (planned)
-├── workers/        # Web Workers for parallel computation (planned)
-└── main.ts         # Entry point
-```
+For detailed architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## 🎨 Voxel States
 
