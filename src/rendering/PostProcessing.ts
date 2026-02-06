@@ -4,6 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
+import { SSAOShader, DepthOfFieldShader, MotionBlurShader, FilmGrainShader, GodRaysShader, ColorGradingShader } from './shaders/PostProcessShaders';
 
 /**
  * Post-processing configuration
@@ -18,6 +19,21 @@ export interface PostProcessingConfig {
   vignetteIntensity: number;
   chromaticAberrationEnabled: boolean;
   chromaticAberrationStrength: number;
+  ssaoEnabled: boolean;
+  ssaoIntensity: number;
+  ssaoRadius: number;
+  depthOfFieldEnabled: boolean;
+  dofFocus: number;
+  dofAperture: number;
+  dofMaxBlur: number;
+  motionBlurEnabled: boolean;
+  motionBlurIntensity: number;
+  filmGrainEnabled: boolean;
+  filmGrainIntensity: number;
+  godRaysEnabled: boolean;
+  godRaysExposure: number;
+  colorGradingEnabled: boolean;
+  colorGradingIntensity: number;
 }
 
 /**
@@ -33,6 +49,21 @@ export const DEFAULT_POST_PROCESSING_CONFIG: PostProcessingConfig = {
   vignetteIntensity: 0.4,
   chromaticAberrationEnabled: false,
   chromaticAberrationStrength: 0.003,
+  ssaoEnabled: true,
+  ssaoIntensity: 1.0,
+  ssaoRadius: 0.5,
+  depthOfFieldEnabled: false,
+  dofFocus: 1.0,
+  dofAperture: 0.025,
+  dofMaxBlur: 1.0,
+  motionBlurEnabled: false,
+  motionBlurIntensity: 1.0,
+  filmGrainEnabled: true,
+  filmGrainIntensity: 0.1,
+  godRaysEnabled: false,
+  godRaysExposure: 0.5,
+  colorGradingEnabled: false,
+  colorGradingIntensity: 1.0,
 };
 
 /**
@@ -111,8 +142,15 @@ export class PostProcessingManager {
   private fxaaPass: ShaderPass;
   private vignettePass: ShaderPass;
   private chromaticAberrationPass: ShaderPass;
+  private ssaoPass: ShaderPass;
+  private depthOfFieldPass: ShaderPass;
+  private motionBlurPass: ShaderPass;
+  private filmGrainPass: ShaderPass;
+  private godRaysPass: ShaderPass;
+  private colorGradingPass: ShaderPass;
   private config: PostProcessingConfig;
   private renderer: THREE.WebGLRenderer;
+  private time: number = 0;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -172,6 +210,47 @@ export class PostProcessingManager {
     this.vignettePass.enabled = this.config.vignetteEnabled;
     this.composer.addPass(this.vignettePass);
 
+    // SSAO pass
+    this.ssaoPass = new ShaderPass(SSAOShader);
+    this.ssaoPass.uniforms['intensity'].value = this.config.ssaoIntensity;
+    this.ssaoPass.uniforms['radius'].value = this.config.ssaoRadius;
+    this.ssaoPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
+    this.ssaoPass.enabled = this.config.ssaoEnabled;
+    this.composer.addPass(this.ssaoPass);
+
+    // Depth of Field pass
+    this.depthOfFieldPass = new ShaderPass(DepthOfFieldShader);
+    this.depthOfFieldPass.uniforms['focus'].value = this.config.dofFocus;
+    this.depthOfFieldPass.uniforms['aperture'].value = this.config.dofAperture;
+    this.depthOfFieldPass.uniforms['maxBlur'].value = this.config.dofMaxBlur;
+    this.depthOfFieldPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
+    this.depthOfFieldPass.enabled = this.config.depthOfFieldEnabled;
+    this.composer.addPass(this.depthOfFieldPass);
+
+    // Motion Blur pass
+    this.motionBlurPass = new ShaderPass(MotionBlurShader);
+    this.motionBlurPass.uniforms['velocityFactor'].value = this.config.motionBlurIntensity;
+    this.motionBlurPass.enabled = this.config.motionBlurEnabled;
+    this.composer.addPass(this.motionBlurPass);
+
+    // God Rays pass
+    this.godRaysPass = new ShaderPass(GodRaysShader);
+    this.godRaysPass.uniforms['exposure'].value = this.config.godRaysExposure;
+    this.godRaysPass.enabled = this.config.godRaysEnabled;
+    this.composer.addPass(this.godRaysPass);
+
+    // Color Grading pass
+    this.colorGradingPass = new ShaderPass(ColorGradingShader);
+    this.colorGradingPass.uniforms['intensity'].value = this.config.colorGradingIntensity;
+    this.colorGradingPass.enabled = this.config.colorGradingEnabled;
+    this.composer.addPass(this.colorGradingPass);
+
+    // Film Grain pass (should be last for best effect)
+    this.filmGrainPass = new ShaderPass(FilmGrainShader);
+    this.filmGrainPass.uniforms['intensity'].value = this.config.filmGrainIntensity;
+    this.filmGrainPass.enabled = this.config.filmGrainEnabled;
+    this.composer.addPass(this.filmGrainPass);
+
     // Handle resize
     window.addEventListener('resize', () => this.onWindowResize());
   }
@@ -179,7 +258,12 @@ export class PostProcessingManager {
   /**
    * Render with post-processing
    */
-  public render(): void {
+  public render(delta?: number): void {
+    // Update time for animated effects
+    if (delta !== undefined) {
+      this.time += delta;
+      this.filmGrainPass.uniforms['time'].value = this.time;
+    }
     this.composer.render();
   }
 
@@ -262,6 +346,118 @@ export class PostProcessingManager {
   }
 
   /**
+   * Set SSAO enabled
+   */
+  public setSSAOEnabled(enabled: boolean): void {
+    this.config.ssaoEnabled = enabled;
+    this.ssaoPass.enabled = enabled;
+  }
+
+  /**
+   * Set SSAO intensity
+   */
+  public setSSAOIntensity(intensity: number): void {
+    this.config.ssaoIntensity = intensity;
+    this.ssaoPass.uniforms['intensity'].value = intensity;
+  }
+
+  /**
+   * Set SSAO radius
+   */
+  public setSSAORadius(radius: number): void {
+    this.config.ssaoRadius = radius;
+    this.ssaoPass.uniforms['radius'].value = radius;
+  }
+
+  /**
+   * Set Depth of Field enabled
+   */
+  public setDepthOfFieldEnabled(enabled: boolean): void {
+    this.config.depthOfFieldEnabled = enabled;
+    this.depthOfFieldPass.enabled = enabled;
+  }
+
+  /**
+   * Set DOF focus distance
+   */
+  public setDOFFocus(focus: number): void {
+    this.config.dofFocus = focus;
+    this.depthOfFieldPass.uniforms['focus'].value = focus;
+  }
+
+  /**
+   * Set DOF aperture
+   */
+  public setDOFAperture(aperture: number): void {
+    this.config.dofAperture = aperture;
+    this.depthOfFieldPass.uniforms['aperture'].value = aperture;
+  }
+
+  /**
+   * Set Motion Blur enabled
+   */
+  public setMotionBlurEnabled(enabled: boolean): void {
+    this.config.motionBlurEnabled = enabled;
+    this.motionBlurPass.enabled = enabled;
+  }
+
+  /**
+   * Set Motion Blur intensity
+   */
+  public setMotionBlurIntensity(intensity: number): void {
+    this.config.motionBlurIntensity = intensity;
+    this.motionBlurPass.uniforms['velocityFactor'].value = intensity;
+  }
+
+  /**
+   * Set Film Grain enabled
+   */
+  public setFilmGrainEnabled(enabled: boolean): void {
+    this.config.filmGrainEnabled = enabled;
+    this.filmGrainPass.enabled = enabled;
+  }
+
+  /**
+   * Set Film Grain intensity
+   */
+  public setFilmGrainIntensity(intensity: number): void {
+    this.config.filmGrainIntensity = intensity;
+    this.filmGrainPass.uniforms['intensity'].value = intensity;
+  }
+
+  /**
+   * Set God Rays enabled
+   */
+  public setGodRaysEnabled(enabled: boolean): void {
+    this.config.godRaysEnabled = enabled;
+    this.godRaysPass.enabled = enabled;
+  }
+
+  /**
+   * Set God Rays exposure
+   */
+  public setGodRaysExposure(exposure: number): void {
+    this.config.godRaysExposure = exposure;
+    this.godRaysPass.uniforms['exposure'].value = exposure;
+  }
+
+  /**
+   * Set Color Grading enabled
+   */
+  public setColorGradingEnabled(enabled: boolean): void {
+    this.config.colorGradingEnabled = enabled;
+    this.colorGradingPass.enabled = enabled;
+  }
+
+  /**
+   * Set Color Grading intensity
+   */
+  public setColorGradingIntensity(intensity: number): void {
+    this.config.colorGradingIntensity = intensity;
+    this.colorGradingPass.uniforms['intensity'].value = intensity;
+  }
+
+  /**
    * Toggle all post-processing
    */
   public setEnabled(enabled: boolean): void {
@@ -269,6 +465,12 @@ export class PostProcessingManager {
     this.fxaaPass.enabled = enabled && this.config.fxaaEnabled;
     this.vignettePass.enabled = enabled && this.config.vignetteEnabled;
     this.chromaticAberrationPass.enabled = enabled && this.config.chromaticAberrationEnabled;
+    this.ssaoPass.enabled = enabled && this.config.ssaoEnabled;
+    this.depthOfFieldPass.enabled = enabled && this.config.depthOfFieldEnabled;
+    this.motionBlurPass.enabled = enabled && this.config.motionBlurEnabled;
+    this.filmGrainPass.enabled = enabled && this.config.filmGrainEnabled;
+    this.godRaysPass.enabled = enabled && this.config.godRaysEnabled;
+    this.colorGradingPass.enabled = enabled && this.config.colorGradingEnabled;
   }
 
   /**
@@ -302,6 +504,7 @@ export class PostProcessingManager {
 
     this.composer.setSize(width, height);
     this.bloomPass.resolution.set(width, height);
+
     const fxaaResolution = this.fxaaPass.uniforms['resolution'];
     if (fxaaResolution) {
       fxaaResolution.value.set(
@@ -309,6 +512,9 @@ export class PostProcessingManager {
         1 / (height * pixelRatio)
       );
     }
+
+    this.ssaoPass.uniforms['resolution'].value.set(width, height);
+    this.depthOfFieldPass.uniforms['resolution'].value.set(width, height);
   }
 
   /**
