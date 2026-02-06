@@ -80,37 +80,42 @@ Efficient 3D data structure for storing world state.
 - 32³ voxels per chunk (optimal for meshing)
 - Independent chunk evolution (planned)
 
-### 3. Rendering System (`VoxelRenderer`)
+### 3. Rendering System (Dual Mode)
 
 **Current Implementation:**
+
+The game supports two rendering modes, toggled with `M` key:
+
+#### VoxelRenderer (Cube Mode)
 - Three.js WebGL renderer
 - Instanced rendering for voxels (InstancedMesh)
 - Color-coded materials per voxel state with emissive properties
 - Three-point lighting (ambient, directional, point)
 - Fog and atmospheric effects
 
-**Planned Enhancements (Modern deferred rendering pipeline):**
+#### OrganicRenderer (Metaball Mode) - NEW ⭐
+- **Marching Cubes Algorithm** for smooth isosurface extraction
+- Metaball-style blob rendering where voxels merge organically
+- Scalar field generation from voxel positions
+- Smooth normal interpolation
+- Enhanced lighting (ambient, directional, rim, point lights)
+- Exponential fog for atmosphere
+- HDR tone mapping (ACES Filmic)
 
-*NOT Minecraft Graphics:*
-- Organic geometry with smooth normal interpolation
-- Marching cubes variant for non-blocky shapes
-- PBR materials (metallic, roughness, emissive)
-- Subsurface scattering for translucent voxels
+#### PostProcessingManager - NEW ⭐
+- **Bloom** (Unreal-style) - Toggled with `B` key
+- **Vignette** - Cinematic edge darkening, toggled with `V` key
+- **FXAA** - Anti-aliasing
+- Chromatic aberration (optional)
+- Custom shader passes
 
-*Rendering Pipeline:*
+**Planned Enhancements:**
 - G-Buffer pass (albedo, normal, material, emission)
 - SSAO (Screen Space Ambient Occlusion)
 - Volumetric lighting and god rays
-- HDR rendering with adaptive exposure
-- Unreal-style bloom with artistic thresholds
 - Color grading via LUT
-- Film grain and chromatic aberration (subtle)
-- FXAA anti-aliasing
-
-*Optimization Techniques:*
-- Greedy meshing (combine adjacent voxels)
-- Frustum culling (visible chunks only)
-- Occlusion culling (skip interior voxels)
+- Greedy meshing for cube mode
+- Frustum/occlusion culling
 - LOD morphing for distant chunks
 
 ### 4. Physics System (`PlayerPhysics`)
@@ -125,6 +130,7 @@ Custom voxel-based physics for player movement.
 - Death and respawn mechanics
 - First-person movement (WASD + mouse look)
 - Sprint mechanic with increased energy drain
+- **God Mode** (`G` key) - Disables energy/oxygen drain
 
 ### 5. World Manager (`WorldManager`) - Planned
 
@@ -152,11 +158,13 @@ genesis-protocol/
 │   │   ├── CARule.ts            # CA rule interface + DefaultCARule
 │   │   └── CASimulator.ts       # CA simulation with double buffering
 │   ├── rendering/               # Graphics
-│   │   ├── VoxelRenderer.ts     # Three.js instanced rendering
+│   │   ├── VoxelRenderer.ts     # Three.js instanced cube rendering
+│   │   ├── OrganicRenderer.ts   # Marching cubes metaball rendering
+│   │   ├── PostProcessing.ts    # Bloom, vignette, FXAA effects
 │   │   └── CameraControls.ts    # OrbitControls wrapper
 │   ├── game/                    # Game Logic
-│   │   ├── Game.ts              # Main game class
-│   │   └── Player.ts            # First-person player entity
+│   │   ├── Game.ts              # Main game class (dual render mode support)
+│   │   └── Player.ts            # First-person player (fly mode, god mode)
 │   ├── physics/                 # Physics
 │   │   └── PlayerPhysics.ts     # AABB collision, gravity, survival
 │   ├── ui/                      # User Interface (HTML/CSS)

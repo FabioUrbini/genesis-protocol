@@ -70,6 +70,8 @@ export class PlayerPhysics {
   // Grid offset for converting world coordinates to grid coordinates
   // World is centered at (0,0,0) but grid data is at (0 to gridSize-1)
   private gridOffset: Vector3;
+  // God mode - no energy/oxygen drain
+  private godMode: boolean = false;
 
   constructor(voxelGrid: VoxelGrid, spawnPosition: Vector3, config: Partial<PlayerPhysicsConfig> = {}) {
     this.config = { ...DEFAULT_PHYSICS_CONFIG, ...config };
@@ -293,6 +295,13 @@ export class PlayerPhysics {
    * Update survival mechanics (energy/oxygen depletion)
    */
   private updateSurvivalMechanics(deltaTime: number): void {
+    // Skip depletion in god mode, but keep energy/oxygen at max
+    if (this.godMode) {
+      this.state.energy = this.config.maxEnergy;
+      this.state.oxygen = this.config.maxOxygen;
+      return;
+    }
+
     // Energy depletion (faster when sprinting)
     const energyDepletion = this.config.energyDepletionRate * deltaTime * (this.state.isSprinting ? 2.0 : 1.0);
     this.state.energy = Math.max(0, this.state.energy - energyDepletion);
@@ -395,5 +404,24 @@ export class PlayerPhysics {
    */
   public isAlive(): boolean {
     return this.state.isAlive;
+  }
+
+  /**
+   * Set god mode (no energy/oxygen drain)
+   */
+  public setGodMode(enabled: boolean): void {
+    this.godMode = enabled;
+    if (enabled) {
+      // Fill energy and oxygen when entering god mode
+      this.state.energy = this.config.maxEnergy;
+      this.state.oxygen = this.config.maxOxygen;
+    }
+  }
+
+  /**
+   * Check if god mode is active
+   */
+  public isGodMode(): boolean {
+    return this.godMode;
   }
 }

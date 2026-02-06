@@ -157,14 +157,22 @@
   <div id="instructions">
     <h2>Genesis Protocol</h2>
     <p>Navigate a living 3D world governed by cellular automaton rules.</p>
+    <p style="font-size: 14px; color: #50e3c2;">Now with organic metaball rendering!</p>
     <p><strong>Click anywhere to start</strong></p>
     <div class="controls">
       <div><span class="key">W A S D</span> - Move</div>
-      <div><span class="key">Space</span> - Jump</div>
-      <div><span class="key">Shift</span> - Sprint</div>
+      <div><span class="key">Space</span> - Jump / Fly Up</div>
+      <div><span class="key">Ctrl</span> - Fly Down</div>
+      <div><span class="key">Shift</span> - Sprint / Fly Fast</div>
       <div><span class="key">Mouse</span> - Look around</div>
-      <div><span class="key">R</span> - Reset simulation</div>
-      <div><span class="key">1 2 3</span> - CA speed (slow/normal/fast)</div>
+      <div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
+        <span class="key">F</span> - Toggle Fly Mode (noclip)</div>
+      <div><span class="key">G</span> - Toggle God Mode</div>
+      <div><span class="key">M</span> - Toggle Render Mode</div>
+      <div><span class="key">B</span> - Toggle Bloom</div>
+      <div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
+        <span class="key">R</span> - Reset simulation</div>
+      <div><span class="key">1 2 3</span> - CA speed</div>
       <div><span class="key">ESC</span> - Release mouse</div>
     </div>
   </div>
@@ -199,6 +207,8 @@
   </div>
 
   <div id="help" class="hidden">
+    <div>Press <strong>F</strong> for fly mode | <strong>G</strong> for god mode</div>
+    <div>Press <strong>M</strong> to toggle cube/organic rendering</div>
     <div>Find crystallized voxels (cyan) to restore energy and oxygen</div>
     <div>Press ESC to release mouse control</div>
   </div>

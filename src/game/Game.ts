@@ -1,15 +1,27 @@
 import { CASimulator } from '../core/CASimulator';
 import { VoxelState } from '../core/VoxelState';
 import { VoxelRenderer } from '../rendering/VoxelRenderer';
+import { OrganicRenderer, RenderMode } from '../rendering/OrganicRenderer';
+import { PostProcessingManager } from '../rendering/PostProcessing';
 import { Player } from './Player';
 import { Vector3 } from 'three';
+
+/**
+ * Render style for the game
+ */
+export enum RenderStyle {
+  Cubes = 'cubes',
+  Organic = 'organic'
+}
 
 /**
  * Main game class - orchestrates CA simulation and rendering
  */
 export class Game {
   private simulator: CASimulator;
-  private renderer: VoxelRenderer;
+  private cubeRenderer: VoxelRenderer;
+  private organicRenderer: OrganicRenderer;
+  private postProcessing: PostProcessingManager | null = null;
   private player: Player;
   private isRunning: boolean;
   private lastCAUpdateTime: number;
@@ -18,19 +30,34 @@ export class Game {
   private fps: number;
   private frameCount: number;
   private fpsUpdateTime: number;
+  private renderStyle: RenderStyle = RenderStyle.Organic;
+  private usePostProcessing: boolean = true;
 
   constructor(canvas: HTMLCanvasElement, gridSize = 32, caUpdateInterval = 2000) {
     // Initialize CA simulator
     this.simulator = new CASimulator(gridSize, gridSize, gridSize);
     
-    // Initialize renderer
-    this.renderer = new VoxelRenderer(canvas, 1);
+    // Initialize both renderers
+    this.cubeRenderer = new VoxelRenderer(canvas, 1);
+    this.organicRenderer = new OrganicRenderer(canvas, 1);
     
     // Initialize with a test pattern
     this.initializeTestPattern();
 
+    // Get active renderer (organic by default)
+    const activeRenderer = this.getActiveRenderer();
+    
     // Render initial grid state (so voxels are visible before first CA update)
-    this.renderer.renderGrid(this.simulator.getGrid());
+    activeRenderer.renderGrid(this.simulator.getGrid());
+
+    // Initialize post-processing (for organic renderer)
+    if (this.renderStyle === RenderStyle.Organic) {
+      this.postProcessing = new PostProcessingManager(
+        this.organicRenderer.getRenderer(),
+        this.organicRenderer.getScene(),
+        this.organicRenderer.getCamera()
+      );
+    }
 
     // Initialize player at spawn position (above the center of the world)
     // Note: World is centered at origin (0,0,0) for rendering, but grid data
@@ -41,8 +68,8 @@ export class Game {
       0
     );
     this.player = new Player(
-      this.renderer.getScene(),
-      this.renderer.getCamera(),
+      activeRenderer.getScene(),
+      activeRenderer.getCamera(),
       this.simulator.getGrid(),
       spawnPosition
     );
@@ -55,6 +82,102 @@ export class Game {
     this.fps = 0;
     this.frameCount = 0;
     this.fpsUpdateTime = 0;
+
+    // Setup keyboard shortcuts for render controls
+    this.setupRenderControls();
+  }
+
+  /**
+   * Get the currently active renderer
+   */
+  private getActiveRenderer(): VoxelRenderer | OrganicRenderer {
+    return this.renderStyle === RenderStyle.Organic ? this.organicRenderer : this.cubeRenderer;
+  }
+
+  /**
+   * Setup keyboard controls for rendering options
+   */
+  private setupRenderControls(): void {
+    document.addEventListener('keydown', (event) => {
+      switch (event.key.toLowerCase()) {
+        case 'm':
+          // Toggle render mode (cubes/organic)
+          this.toggleRenderStyle();
+          break;
+        case 'b':
+          // Toggle bloom
+          this.toggleBloom();
+          break;
+        case 'v':
+          // Toggle vignette
+          this.toggleVignette();
+          break;
+      }
+    });
+  }
+
+  /**
+   * Toggle between cube and organic render styles
+   */
+  public toggleRenderStyle(): void {
+    this.renderStyle = this.renderStyle === RenderStyle.Cubes 
+      ? RenderStyle.Organic 
+      : RenderStyle.Cubes;
+    
+    console.warn(`Render style: ${this.renderStyle}`);
+    
+    // Re-render with new style
+    const activeRenderer = this.getActiveRenderer();
+    activeRenderer.renderGrid(this.simulator.getGrid());
+
+    // Update post-processing for new renderer
+    if (this.renderStyle === RenderStyle.Organic && this.usePostProcessing) {
+      if (!this.postProcessing) {
+        this.postProcessing = new PostProcessingManager(
+          this.organicRenderer.getRenderer(),
+          this.organicRenderer.getScene(),
+          this.organicRenderer.getCamera()
+        );
+      } else {
+        this.postProcessing.updateScene(this.organicRenderer.getScene());
+        this.postProcessing.updateCamera(this.organicRenderer.getCamera());
+      }
+    }
+
+    this.updateUI();
+  }
+
+  /**
+   * Toggle bloom effect
+   */
+  public toggleBloom(): void {
+    if (this.postProcessing) {
+      const config = this.postProcessing.getConfig();
+      this.postProcessing.setBloomEnabled(!config.bloomEnabled);
+      console.warn(`Bloom: ${!config.bloomEnabled ? 'ON' : 'OFF'}`);
+    }
+  }
+
+  /**
+   * Toggle vignette effect
+   */
+  public toggleVignette(): void {
+    if (this.postProcessing) {
+      const config = this.postProcessing.getConfig();
+      this.postProcessing.setVignetteEnabled(!config.vignetteEnabled);
+      console.warn(`Vignette: ${!config.vignetteEnabled ? 'ON' : 'OFF'}`);
+    }
+  }
+
+  /**
+   * Set organic render mode (metaballs or spheres)
+   */
+  public setOrganicRenderMode(mode: RenderMode): void {
+    this.organicRenderer.setRenderMode(mode);
+    if (this.renderStyle === RenderStyle.Organic) {
+      this.organicRenderer.renderGrid(this.simulator.getGrid());
+    }
+    console.warn(`Organic mode: ${mode}`);
   }
 
   /**
@@ -136,7 +259,8 @@ export class Game {
       this.lastCAUpdateTime = currentTime;
       
       // Re-render grid after CA update
-      this.renderer.renderGrid(this.simulator.getGrid());
+      const activeRenderer = this.getActiveRenderer();
+      activeRenderer.renderGrid(this.simulator.getGrid());
       
       this.updateUI();
     }
@@ -149,8 +273,12 @@ export class Game {
       this.player.respawn();
     }
 
-    // Render scene
-    this.renderer.render();
+    // Render scene with or without post-processing
+    if (this.renderStyle === RenderStyle.Organic && this.usePostProcessing && this.postProcessing) {
+      this.postProcessing.render();
+    } else {
+      this.getActiveRenderer().render();
+    }
 
     // Continue loop
     requestAnimationFrame(() => this.gameLoop());
@@ -209,10 +337,17 @@ export class Game {
   }
 
   /**
-   * Get renderer
+   * Get current renderer
    */
-  public getRenderer(): VoxelRenderer {
-    return this.renderer;
+  public getRenderer(): VoxelRenderer | OrganicRenderer {
+    return this.getActiveRenderer();
+  }
+
+  /**
+   * Get render style
+   */
+  public getRenderStyle(): RenderStyle {
+    return this.renderStyle;
   }
 
   /**
@@ -228,7 +363,7 @@ export class Game {
   public reset(): void {
     this.simulator.reset();
     this.initializeTestPattern();
-    this.renderer.renderGrid(this.simulator.getGrid());
+    this.getActiveRenderer().renderGrid(this.simulator.getGrid());
     this.lastCAUpdateTime = performance.now();
     this.player.respawn();
   }
@@ -238,7 +373,11 @@ export class Game {
    */
   public dispose(): void {
     this.stop();
-    this.renderer.dispose();
+    this.cubeRenderer.dispose();
+    this.organicRenderer.dispose();
+    if (this.postProcessing) {
+      this.postProcessing.dispose();
+    }
     this.player.dispose();
   }
 }

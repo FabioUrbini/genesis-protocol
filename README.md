@@ -6,6 +6,10 @@ A 3D Cellular Automaton Survival Game built with TypeScript and Three.js.
 
 Genesis Protocol is a browser-based game where the entire 3D voxel world evolves using modified Conway's Game of Life rules. Watch as patterns emerge, evolve, and interact in real-time 3D space.
 
+**✨ NEW: Organic Metaball Rendering** - No more blocky cubes! The world now renders with smooth, blob-like organic shapes using Marching Cubes algorithm. Toggle between cube and organic rendering with `M` key.
+
+**🚀 Fly Mode** - Press `F` to toggle noclip flying for easy exploration of the living world.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -41,7 +45,7 @@ npm test
 
 ## 🎯 Current Implementation Status
 
-### ✅ Completed (Phase 2 - Playable Game)
+### ✅ Completed (Phase 3 - Visual Overhaul)
 
 1. **Project Setup**
    - TypeScript with strict mode
@@ -74,19 +78,27 @@ npm test
    - Safe zone regeneration (near crystallized voxels)
    - Death and respawn mechanics
 
-5. **Player System** ⭐ NEW
+5. **Player System** ⭐ ENHANCED
    - First-person player entity
    - WASD movement controls
    - Mouse look with pointer lock
    - Sprint and jump mechanics
    - Energy and oxygen survival mechanics
+   - **Fly Mode (F key)** - Noclip flying for easy exploration
+   - **God Mode (G key)** - Disable energy/oxygen drain
    - Smooth camera controls
 
-6. **Rendering System**
-   - Three.js-based `VoxelRenderer`
-   - Instanced rendering for performance
+6. **Rendering System** ⭐ OVERHAULED
+   - **Dual Render Modes:**
+     - `VoxelRenderer` - Classic cube-based instanced rendering
+     - `OrganicRenderer` - Smooth metaball/blob rendering using Marching Cubes
+   - **Post-Processing Effects:**
+     - Bloom with Unreal-style glow
+     - Vignette for cinematic effect
+     - FXAA anti-aliasing
+     - HDR tone mapping (ACES Filmic)
    - Color-coded voxel states with emissive materials
-   - Three-point lighting (ambient, directional, point)
+   - Enhanced lighting setup (ambient, directional, rim, point lights)
    - Fog and atmospheric effects
 
 7. **Game Loop**
@@ -106,13 +118,23 @@ npm test
    - Pointer lock instructions
    - Help text overlay
    - Keyboard shortcuts:
-     - `W A S D` - Move
-     - `Space` - Jump
-     - `Shift` - Sprint
-     - `Mouse` - Look around
-     - `R` - Reset simulation
-     - `1 2 3` - CA speed (slow/normal/fast)
-     - `ESC` - Release mouse
+     - **Movement:**
+       - `W A S D` - Move
+       - `Space` - Jump / Fly Up
+       - `Ctrl` - Fly Down
+       - `Shift` - Sprint / Fly Fast
+       - `Mouse` - Look around
+     - **Modes:**
+       - `F` - Toggle Fly Mode (noclip)
+       - `G` - Toggle God Mode
+       - `M` - Toggle Render Mode (cube/organic)
+     - **Effects:**
+       - `B` - Toggle Bloom
+       - `V` - Toggle Vignette
+     - **Simulation:**
+       - `R` - Reset simulation
+       - `1 2 3` - CA speed (slow/normal/fast)
+       - `ESC` - Release mouse
 
 9. **Web Workers** ⭐ NEW
    - `CAWorker` for parallel CA computation
@@ -130,15 +152,17 @@ npm test
 ### 🔄 Future Enhancements
 
 - Integrate Web Workers into main game loop
-- Greedy meshing algorithm for better rendering performance
+- Greedy meshing algorithm for cube rendering performance
 - Inventory system for resource collection
 - Pattern library (save/load formations)
 - Time manipulation tools
 - Multiple biomes with different rule sets
 - Procedural world generation
 - Resource harvesting mechanics
-- Advanced rendering (PBR, deferred rendering, post-processing)
+- Advanced rendering (PBR, deferred rendering)
 - Frustum and occlusion culling
+- Sphere-based organic rendering option
+- Chromatic aberration effect toggle
 
 ## 🏗️ Architecture
 
