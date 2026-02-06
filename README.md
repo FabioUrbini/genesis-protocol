@@ -45,7 +45,7 @@ npm test
 
 ## 🎯 Current Implementation Status
 
-### ✅ Completed (Phase 5 - Player Interaction & World Manipulation)
+### ✅ Completed (Phase 6 - Survival Systems & Resources)
 
 1. **Project Setup**
    - TypeScript with strict mode
@@ -136,13 +136,15 @@ npm test
        - `G` - Toggle God Mode
        - `M` - Toggle Render Mode (cube/organic)
      - **World Interaction:**
-       - `Left Click` - Remove voxel
+       - `Left Click` - Remove voxel (auto-harvest)
        - `Right Click` - Place voxel
        - `Middle Click` - Pick voxel type
        - `1` - Select Alive (Blue)
        - `2` - Select Energized (Orange)
        - `3` - Select Crystallized (Cyan)
        - `4` - Select Corrupted (Red)
+       - `I` - Show inventory
+       - `H` - Toggle harvesting
      - **Time Control:**
        - `P` - Pause/Unpause
        - `[` - Slow down time
@@ -195,16 +197,50 @@ npm test
     - Special: Energy Core, Crystal Cluster, Corruption Seed
     - Random Cluster for experimentation
 
+14. **Inventory System** ⭐ NEW
+    - 20-slot inventory for resources
+    - 6 resource types: Crystallized Voxels, Energy Cores, Temporal Shards, etc.
+    - Stack sizes and resource metadata
+    - Consumable items for energy restoration
+    - Export/import to JSON
+    - Press I to view inventory
+
+15. **Resource Harvesting** ⭐ NEW
+    - Automatic resource drops when breaking voxels
+    - Drop tables with chance-based rewards
+    - Different resources from different voxel types
+    - Crystallized voxels drop building materials
+    - Energized voxels drop energy items
+    - Corrupted voxels drop dangerous fragments
+    - Toggle harvesting with H key
+
+16. **Base Building** ⭐ NEW
+    - 5 buildable structures: Barrier Shield, Stabilizer Node, Portal Gate, etc.
+    - Resource-based crafting system
+    - Structure recipes with material costs
+    - Temporal Anchors for respawn points
+    - Energy Generators for power
+    - Structure health and damage system
+
+17. **Environmental Suit Upgrades** ⭐ NEW
+    - 6 upgrade types: Energy Capacity, Oxygen Capacity, Movement Speed, etc.
+    - Multi-level progression (3-5 levels per upgrade)
+    - Resource costs for each upgrade
+    - Percentage-based stat boosts
+    - Energy regeneration improvements
+    - Oxygen efficiency enhancements
+
 ### 🔄 Future Enhancements
 
 - Occlusion culling for interior voxels
 - LOD system for distant chunks
-- Inventory system for resource collection
+- Hostile Pattern AI (aggressive gliders)
 - Rule Injectors for temporary CA modifications
-- Stabilizer Nodes to prevent evolution
 - Multiple biomes with different rule sets
 - Procedural world generation
 - Chunk streaming system
+- UI for inventory and upgrades
+- Crafting interface
 - Resource harvesting mechanics
 - Advanced rendering (PBR, deferred rendering)
 - Frustum and occlusion culling

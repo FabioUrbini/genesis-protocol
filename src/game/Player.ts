@@ -2,6 +2,8 @@ import { Vector3, Mesh, BoxGeometry, MeshStandardMaterial, Scene, PerspectiveCam
 import { PlayerPhysics, PlayerPhysicsConfig } from '../physics/PlayerPhysics';
 import { VoxelGrid } from '../core/VoxelGrid';
 import { VoxelState } from '../core/VoxelState';
+import { InventorySystem } from './InventorySystem';
+import { ResourceHarvesting } from './ResourceHarvesting';
 
 /**
  * Input state for player controls
@@ -83,6 +85,10 @@ export class Player {
   private maxReachDistance: number = 10;
   private selectedVoxelState: VoxelState = VoxelState.Alive;
 
+  // Inventory and resource system
+  private inventory: InventorySystem;
+  private harvesting: ResourceHarvesting;
+
   constructor(
     scene: Scene,
     camera: PerspectiveCamera,
@@ -96,7 +102,11 @@ export class Player {
     
     // Initialize physics
     this.physics = new PlayerPhysics(voxelGrid, spawnPosition, config.physicsConfig);
-    
+
+    // Initialize inventory and harvesting
+    this.inventory = new InventorySystem();
+    this.harvesting = new ResourceHarvesting(this.inventory);
+
     // Create player mesh (for third-person view or debugging)
     if (this.config.showPlayerMesh) {
       this.createPlayerMesh();
@@ -194,6 +204,14 @@ export class Player {
       case 'Digit4':
         this.selectedVoxelState = VoxelState.Corrupted;
         console.log('Selected: Corrupted (Red)');
+        break;
+      case 'KeyI':
+        // Show inventory
+        this.showInventory();
+        break;
+      case 'KeyH':
+        // Toggle harvesting
+        this.harvesting.setHarvestingEnabled(!this.harvesting.isHarvestingEnabled());
         break;
     }
   }
@@ -390,6 +408,13 @@ export class Player {
     if (!raycast) return;
 
     const voxelGrid = this.physics.getVoxelGrid();
+    const voxelState = voxelGrid.get(raycast.x, raycast.y, raycast.z);
+
+    // Try to harvest resources
+    if (this.harvesting.isHarvestingEnabled()) {
+      this.harvesting.harvestVoxel(voxelState);
+    }
+
     voxelGrid.set(raycast.x, raycast.y, raycast.z, VoxelState.Dead);
     console.log(`Removed voxel at (${raycast.x}, ${raycast.y}, ${raycast.z})`);
   }
@@ -408,6 +433,30 @@ export class Player {
       this.selectedVoxelState = state;
       console.log(`Picked ${VoxelState[state]} voxel`);
     }
+  }
+
+  /**
+   * Show inventory summary
+   */
+  private showInventory(): void {
+    console.log('=== INVENTORY ===');
+    console.log(this.inventory.getSummary());
+    console.log(`Slots: ${this.inventory.getOccupiedSlots()}/${this.inventory.getMaxSlots()}`);
+    console.log('================');
+  }
+
+  /**
+   * Get inventory system
+   */
+  public getInventory(): InventorySystem {
+    return this.inventory;
+  }
+
+  /**
+   * Get harvesting system
+   */
+  public getHarvesting(): ResourceHarvesting {
+    return this.harvesting;
   }
 
   /**
