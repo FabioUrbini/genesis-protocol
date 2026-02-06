@@ -29,11 +29,16 @@ export class Game {
     // Initialize with a test pattern
     this.initializeTestPattern();
 
+    // Render initial grid state (so voxels are visible before first CA update)
+    this.renderer.renderGrid(this.simulator.getGrid());
+
     // Initialize player at spawn position (above the center of the world)
+    // Note: World is centered at origin (0,0,0) for rendering, but grid data
+    // is at grid coordinates (0 to gridSize-1). Spawn at world center.
     const spawnPosition = new Vector3(
-      gridSize / 2,
-      gridSize / 2 + 5,
-      gridSize / 2
+      0,
+      5,
+      0
     );
     this.player = new Player(
       this.renderer.getScene(),

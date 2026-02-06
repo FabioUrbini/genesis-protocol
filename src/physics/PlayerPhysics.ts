@@ -67,11 +67,20 @@ export class PlayerPhysics {
   private state: PlayerState;
   private voxelGrid: VoxelGrid;
   private spawnPosition: Vector3;
+  // Grid offset for converting world coordinates to grid coordinates
+  // World is centered at (0,0,0) but grid data is at (0 to gridSize-1)
+  private gridOffset: Vector3;
 
   constructor(voxelGrid: VoxelGrid, spawnPosition: Vector3, config: Partial<PlayerPhysicsConfig> = {}) {
     this.config = { ...DEFAULT_PHYSICS_CONFIG, ...config };
     this.voxelGrid = voxelGrid;
     this.spawnPosition = spawnPosition.clone();
+    // Calculate grid offset (half of grid size in each dimension)
+    this.gridOffset = new Vector3(
+      voxelGrid.width / 2,
+      voxelGrid.height / 2,
+      voxelGrid.depth / 2
+    );
 
     // Initialize player state
     this.state = {
@@ -190,26 +199,44 @@ export class PlayerPhysics {
   }
 
   /**
+   * Convert world position to grid position
+   */
+  private worldToGrid(worldPos: Vector3): Vector3 {
+    return new Vector3(
+      worldPos.x + this.gridOffset.x,
+      worldPos.y + this.gridOffset.y,
+      worldPos.z + this.gridOffset.z
+    );
+  }
+
+  /**
    * Check collision with voxel world using AABB
    */
   private checkCollision(position: Vector3): boolean {
     const aabb = this.getPlayerAABB(position);
 
+    // Convert AABB to grid coordinates
+    const gridMin = this.worldToGrid(aabb.min);
+    const gridMax = this.worldToGrid(aabb.max);
+
     // Check all voxels that could intersect with player AABB
-    const minX = Math.floor(aabb.min.x);
-    const minY = Math.floor(aabb.min.y);
-    const minZ = Math.floor(aabb.min.z);
-    const maxX = Math.ceil(aabb.max.x);
-    const maxY = Math.ceil(aabb.max.y);
-    const maxZ = Math.ceil(aabb.max.z);
+    const minX = Math.floor(gridMin.x);
+    const minY = Math.floor(gridMin.y);
+    const minZ = Math.floor(gridMin.z);
+    const maxX = Math.ceil(gridMax.x);
+    const maxY = Math.ceil(gridMax.y);
+    const maxZ = Math.ceil(gridMax.z);
 
     for (let x = minX; x <= maxX; x++) {
       for (let y = minY; y <= maxY; y++) {
         for (let z = minZ; z <= maxZ; z++) {
           const state = this.voxelGrid.get(x, y, z);
           if (this.isVoxelSolid(state)) {
-            // Check AABB intersection
-            if (this.aabbIntersectsVoxel(aabb, x, y, z)) {
+            // Check AABB intersection (convert grid voxel back to world coords for comparison)
+            const worldVoxelX = x - this.gridOffset.x;
+            const worldVoxelY = y - this.gridOffset.y;
+            const worldVoxelZ = z - this.gridOffset.z;
+            if (this.aabbIntersectsVoxel(aabb, worldVoxelX, worldVoxelY, worldVoxelZ)) {
               return true;
             }
           }
@@ -286,10 +313,12 @@ export class PlayerPhysics {
    */
   private isInSafeZone(): boolean {
     // Check for crystallized voxels nearby (safe zones)
+    // Convert world position to grid position
+    const gridPos = this.worldToGrid(this.state.position);
     const checkRadius = 3;
-    const px = Math.floor(this.state.position.x);
-    const py = Math.floor(this.state.position.y);
-    const pz = Math.floor(this.state.position.z);
+    const px = Math.floor(gridPos.x);
+    const py = Math.floor(gridPos.y);
+    const pz = Math.floor(gridPos.z);
 
     for (let x = px - checkRadius; x <= px + checkRadius; x++) {
       for (let y = py - checkRadius; y <= py + checkRadius; y++) {
