@@ -17,6 +17,7 @@
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       background: #000;
+      cursor: crosshair;
     }
 
     #canvas {
@@ -43,10 +44,105 @@
       font-size: 14px;
       text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
       pointer-events: none;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 15px;
+      border-radius: 8px;
+      backdrop-filter: blur(5px);
+    }
+
+    #ui > div {
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      display: inline-block;
+      width: 80px;
+      font-weight: 600;
+    }
+
+    .bar-container {
+      display: inline-block;
+      width: 150px;
+      height: 16px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+      overflow: hidden;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    .energy-bar {
+      background: linear-gradient(90deg, #f39c12, #e67e22);
+    }
+
+    .oxygen-bar {
+      background: linear-gradient(90deg, #3498db, #2980b9);
+    }
+
+    #instructions {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 500px;
+      pointer-events: none;
+    }
+
+    #instructions h2 {
+      margin-bottom: 20px;
+      font-size: 28px;
+    }
+
+    #instructions p {
+      margin-bottom: 15px;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    #instructions .controls {
+      text-align: left;
+      margin-top: 20px;
+    }
+
+    #instructions .controls div {
+      margin: 8px 0;
+    }
+
+    #instructions .key {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-weight: bold;
+      min-width: 30px;
+      text-align: center;
     }
 
     .hidden {
       display: none;
+    }
+
+    #help {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+      pointer-events: none;
+      text-align: right;
     }
   </style>
 </head>
@@ -58,12 +154,91 @@
     <div style="font-size: 16px; margin-top: 10px;">Loading...</div>
   </div>
 
+  <div id="instructions">
+    <h2>Genesis Protocol</h2>
+    <p>Navigate a living 3D world governed by cellular automaton rules.</p>
+    <p><strong>Click anywhere to start</strong></p>
+    <div class="controls">
+      <div><span class="key">W A S D</span> - Move</div>
+      <div><span class="key">Space</span> - Jump</div>
+      <div><span class="key">Shift</span> - Sprint</div>
+      <div><span class="key">Mouse</span> - Look around</div>
+      <div><span class="key">R</span> - Reset simulation</div>
+      <div><span class="key">1 2 3</span> - CA speed (slow/normal/fast)</div>
+      <div><span class="key">ESC</span> - Release mouse</div>
+    </div>
+  </div>
+
   <div id="ui" class="hidden">
-    <div>FPS: <span id="fps">0</span></div>
-    <div>Position: <span id="position">0, 0, 0</span></div>
-    <div>CA Tick: <span id="tick">0</span></div>
+    <div>
+      <span class="stat-label">FPS:</span>
+      <span id="fps">0</span>
+    </div>
+    <div>
+      <span class="stat-label">Position:</span>
+      <span id="position">0, 0, 0</span>
+    </div>
+    <div>
+      <span class="stat-label">CA Tick:</span>
+      <span id="tick">0</span>
+    </div>
+    <div>
+      <span class="stat-label">Energy:</span>
+      <span id="energy">100</span>
+      <div class="bar-container">
+        <div class="bar-fill energy-bar" id="energy-bar" style="width: 100%"></div>
+      </div>
+    </div>
+    <div>
+      <span class="stat-label">Oxygen:</span>
+      <span id="oxygen">100</span>
+      <div class="bar-container">
+        <div class="bar-fill oxygen-bar" id="oxygen-bar" style="width: 100%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="help" class="hidden">
+    <div>Find crystallized voxels (cyan) to restore energy and oxygen</div>
+    <div>Press ESC to release mouse control</div>
   </div>
 
   <script type="module" src="/src/main.ts"></script>
+  <script>
+    // Hide instructions when pointer lock is activated
+    document.addEventListener('pointerlockchange', () => {
+      const instructions = document.getElementById('instructions');
+      const ui = document.getElementById('ui');
+      const help = document.getElementById('help');
+      
+      if (document.pointerLockElement) {
+        instructions.classList.add('hidden');
+        ui.classList.remove('hidden');
+        help.classList.remove('hidden');
+      } else {
+        instructions.classList.remove('hidden');
+        ui.classList.add('hidden');
+        help.classList.add('hidden');
+      }
+    });
+
+    // Update energy and oxygen bars
+    setInterval(() => {
+      const energyElement = document.getElementById('energy');
+      const oxygenElement = document.getElementById('oxygen');
+      const energyBar = document.getElementById('energy-bar');
+      const oxygenBar = document.getElementById('oxygen-bar');
+      
+      if (energyElement && energyBar) {
+        const energy = parseFloat(energyElement.textContent) || 0;
+        energyBar.style.width = Math.max(0, Math.min(100, energy)) + '%';
+      }
+      
+      if (oxygenElement && oxygenBar) {
+        const oxygen = parseFloat(oxygenElement.textContent) || 0;
+        oxygenBar.style.width = Math.max(0, Math.min(100, oxygen)) + '%';
+      }
+    }, 100);
+  </script>
 </body>
 </html>
