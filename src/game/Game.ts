@@ -4,6 +4,7 @@ import { VoxelRenderer } from '../rendering/VoxelRenderer';
 import { OrganicRenderer, RenderMode } from '../rendering/OrganicRenderer';
 import { PostProcessingManager } from '../rendering/PostProcessing';
 import { Player } from './Player';
+import { CASimulatorWorker } from '../workers/WorkerPool';
 import { Vector3 } from 'three';
 
 /**
@@ -19,6 +20,8 @@ export enum RenderStyle {
  */
 export class Game {
   private simulator: CASimulator;
+  private workerSimulator: CASimulatorWorker | null = null;
+  private useWorkers: boolean = true;
   private cubeRenderer: VoxelRenderer;
   private organicRenderer: OrganicRenderer;
   private postProcessing: PostProcessingManager | null = null;
@@ -32,17 +35,23 @@ export class Game {
   private fpsUpdateTime: number;
   private renderStyle: RenderStyle = RenderStyle.Organic;
   private usePostProcessing: boolean = true;
+  private isCAStepInProgress: boolean = false;
 
   constructor(canvas: HTMLCanvasElement, gridSize = 32, caUpdateInterval = 2000) {
-    // Initialize CA simulator
+    // Initialize CA simulator (main thread fallback)
     this.simulator = new CASimulator(gridSize, gridSize, gridSize);
-    
+
     // Initialize both renderers
     this.cubeRenderer = new VoxelRenderer(canvas, 1);
     this.organicRenderer = new OrganicRenderer(canvas, 1);
-    
+
     // Initialize with a test pattern
     this.initializeTestPattern();
+
+    // Initialize Web Worker simulator
+    if (this.useWorkers) {
+      this.initializeWorkerSimulator(gridSize);
+    }
 
     // Get active renderer (organic by default)
     const activeRenderer = this.getActiveRenderer();
@@ -181,6 +190,20 @@ export class Game {
   }
 
   /**
+   * Initialize Web Worker simulator
+   */
+  private async initializeWorkerSimulator(gridSize: number): Promise<void> {
+    try {
+      this.workerSimulator = new CASimulatorWorker(gridSize, gridSize, gridSize);
+      await this.workerSimulator.init(this.simulator.getGrid().getData());
+      console.log('Web Worker CA simulator initialized');
+    } catch (error) {
+      console.error('Failed to initialize Web Worker simulator:', error);
+      this.useWorkers = false;
+    }
+  }
+
+  /**
    * Initialize with a test pattern for demonstration
    */
   private initializeTestPattern(): void {
@@ -254,15 +277,37 @@ export class Game {
     }
 
     // Update CA simulation at fixed interval
-    if (currentTime - this.lastCAUpdateTime >= this.caUpdateInterval) {
-      this.simulator.step();
+    if (currentTime - this.lastCAUpdateTime >= this.caUpdateInterval && !this.isCAStepInProgress) {
+      this.isCAStepInProgress = true;
       this.lastCAUpdateTime = currentTime;
-      
-      // Re-render grid after CA update
-      const activeRenderer = this.getActiveRenderer();
-      activeRenderer.renderGrid(this.simulator.getGrid());
-      
-      this.updateUI();
+
+      if (this.useWorkers && this.workerSimulator) {
+        // Use Web Worker for CA simulation (async, non-blocking)
+        this.workerSimulator.step().then((gridData) => {
+          // Update main thread grid with worker result
+          this.simulator.getGrid().getData().set(gridData);
+
+          // Re-render grid after CA update
+          const activeRenderer = this.getActiveRenderer();
+          activeRenderer.renderGrid(this.simulator.getGrid());
+
+          this.isCAStepInProgress = false;
+          this.updateUI();
+        }).catch((error) => {
+          console.error('Worker CA step failed:', error);
+          this.isCAStepInProgress = false;
+        });
+      } else {
+        // Fallback to main thread simulation
+        this.simulator.step();
+
+        // Re-render grid after CA update
+        const activeRenderer = this.getActiveRenderer();
+        activeRenderer.renderGrid(this.simulator.getGrid());
+
+        this.isCAStepInProgress = false;
+        this.updateUI();
+      }
     }
 
     // Update player (physics, input, camera)
@@ -378,6 +423,24 @@ export class Game {
     if (this.postProcessing) {
       this.postProcessing.dispose();
     }
+    if (this.workerSimulator) {
+      this.workerSimulator.terminate();
+    }
     this.player.dispose();
+  }
+
+  /**
+   * Toggle Web Workers on/off
+   */
+  public toggleWorkers(): void {
+    this.useWorkers = !this.useWorkers;
+    console.log(`Web Workers: ${this.useWorkers ? 'ON' : 'OFF'}`);
+  }
+
+  /**
+   * Get worker status
+   */
+  public isUsingWorkers(): boolean {
+    return this.useWorkers && this.workerSimulator !== null;
   }
 }

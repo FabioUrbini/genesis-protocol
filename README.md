@@ -45,7 +45,7 @@ npm test
 
 ## 🎯 Current Implementation Status
 
-### ✅ Completed (Phase 3 - Visual Overhaul)
+### ✅ Completed (Phase 4 - Performance & Worker Integration)
 
 1. **Project Setup**
    - TypeScript with strict mode
@@ -59,7 +59,7 @@ npm test
    - `Chunk` class (32³ voxels per chunk)
    - Efficient 3D-to-1D index conversion
 
-3. **Cellular Automaton Engine**
+3. **Cellular Automaton Engine** ⭐ OPTIMIZED
    - `CASimulator` with double buffering
    - 3D Moore neighborhood (26 neighbors)
    - Modified Conway's Life rules:
@@ -69,6 +69,8 @@ npm test
      - Crystallize: 2-3 living neighbors
      - Corruption spread mechanics
    - Still Life detection for optimization
+   - **Dirty Region Tracking** - Only updates changed areas (8x8x8 regions)
+   - **Web Worker Integration** - CA simulation runs off main thread
 
 4. **Physics System** ⭐ NEW
    - `PlayerPhysics` class with AABB collision detection
@@ -88,15 +90,16 @@ npm test
    - **God Mode (G key)** - Disable energy/oxygen drain
    - Smooth camera controls
 
-6. **Rendering System** ⭐ OVERHAULED
+6. **Rendering System** ⭐ OVERHAULED & OPTIMIZED
    - **Dual Render Modes:**
-     - `VoxelRenderer` - Classic cube-based instanced rendering
+     - `VoxelRenderer` - **Greedy Meshing** algorithm for optimal cube rendering
      - `OrganicRenderer` - Smooth metaball/blob rendering using Marching Cubes
    - **Post-Processing Effects:**
      - Bloom with Unreal-style glow
      - Vignette for cinematic effect
      - FXAA anti-aliasing
      - HDR tone mapping (ACES Filmic)
+   - **Frustum Culling** - Only renders visible meshes
    - Color-coded voxel states with emissive materials
    - Enhanced lighting setup (ambient, directional, rim, point lights)
    - Fog and atmospheric effects
@@ -136,10 +139,11 @@ npm test
        - `1 2 3` - CA speed (slow/normal/fast)
        - `ESC` - Release mouse
 
-9. **Web Workers** ⭐ NEW
+9. **Web Workers** ⭐ NEW & INTEGRATED
    - `CAWorker` for parallel CA computation
    - `WorkerPool` for managing multiple workers
    - `CASimulatorWorker` wrapper for easy integration
+   - **Integrated into Game Loop** - Non-blocking CA updates
    - Message passing infrastructure
    - Transferable objects for performance
 
@@ -151,8 +155,8 @@ npm test
 
 ### 🔄 Future Enhancements
 
-- Integrate Web Workers into main game loop
-- Greedy meshing algorithm for cube rendering performance
+- Occlusion culling for interior voxels
+- LOD system for distant chunks
 - Inventory system for resource collection
 - Pattern library (save/load formations)
 - Time manipulation tools
