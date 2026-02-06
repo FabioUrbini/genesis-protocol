@@ -1,6 +1,7 @@
-import { Vector3, Mesh, BoxGeometry, MeshStandardMaterial, Scene, PerspectiveCamera, Euler } from 'three';
+import { Vector3, Mesh, BoxGeometry, MeshStandardMaterial, Scene, PerspectiveCamera, Euler, Raycaster } from 'three';
 import { PlayerPhysics, PlayerPhysicsConfig } from '../physics/PlayerPhysics';
 import { VoxelGrid } from '../core/VoxelGrid';
+import { VoxelState } from '../core/VoxelState';
 
 /**
  * Input state for player controls
@@ -77,6 +78,11 @@ export class Player {
   // Pointer lock state
   private isPointerLocked: boolean = false;
 
+  // Raycaster for voxel interaction
+  private raycaster: Raycaster = new Raycaster();
+  private maxReachDistance: number = 10;
+  private selectedVoxelState: VoxelState = VoxelState.Alive;
+
   constructor(
     scene: Scene,
     camera: PerspectiveCamera,
@@ -132,6 +138,9 @@ export class Player {
     document.addEventListener('click', this.requestPointerLock.bind(this));
     document.addEventListener('pointerlockchange', this.onPointerLockChange.bind(this));
     document.addEventListener('mousemove', this.onMouseMove.bind(this));
+
+    // Mouse button input for voxel interaction
+    document.addEventListener('mousedown', this.onMouseDown.bind(this));
   }
 
   /**
@@ -169,6 +178,22 @@ export class Player {
         break;
       case 'KeyG':
         this.toggleGodMode();
+        break;
+      case 'Digit1':
+        this.selectedVoxelState = VoxelState.Alive;
+        console.log('Selected: Alive (Blue)');
+        break;
+      case 'Digit2':
+        this.selectedVoxelState = VoxelState.Energized;
+        console.log('Selected: Energized (Orange)');
+        break;
+      case 'Digit3':
+        this.selectedVoxelState = VoxelState.Crystallized;
+        console.log('Selected: Crystallized (Cyan)');
+        break;
+      case 'Digit4':
+        this.selectedVoxelState = VoxelState.Corrupted;
+        console.log('Selected: Corrupted (Red)');
         break;
     }
   }
@@ -231,6 +256,158 @@ export class Player {
 
     this.input.mouseMovementX = event.movementX;
     this.input.mouseMovementY = event.movementY;
+  }
+
+  /**
+   * Handle mouse button input for voxel interaction
+   */
+  private onMouseDown(event: MouseEvent): void {
+    if (!this.isPointerLocked) {
+      return;
+    }
+
+    // Left click (button 0) - Remove voxel
+    if (event.button === 0) {
+      this.removeVoxel();
+    }
+    // Right click (button 2) - Place voxel
+    else if (event.button === 2) {
+      this.placeVoxel();
+      event.preventDefault();
+    }
+    // Middle click (button 1) - Pick voxel
+    else if (event.button === 1) {
+      this.pickVoxel();
+      event.preventDefault();
+    }
+  }
+
+  /**
+   * Raycast to find targeted voxel
+   */
+  private raycastVoxel(): { hit: boolean; x: number; y: number; z: number; normal: Vector3 } | null {
+    // Setup raycaster from camera
+    this.raycaster.setFromCamera({ x: 0, y: 0 }, this.camera);
+    this.raycaster.far = this.maxReachDistance;
+
+    const voxelGrid = this.physics.getVoxelGrid();
+    const gridSize = voxelGrid.width;
+    const voxelSize = 1;
+    const offsetX = (gridSize * voxelSize) / 2;
+    const offsetY = (gridSize * voxelSize) / 2;
+    const offsetZ = (gridSize * voxelSize) / 2;
+
+    // Ray marching through voxel grid
+    const origin = this.raycaster.ray.origin.clone();
+    const direction = this.raycaster.ray.direction.clone();
+    const step = 0.1;
+    let distance = 0;
+
+    while (distance < this.maxReachDistance) {
+      const point = origin.clone().add(direction.clone().multiplyScalar(distance));
+
+      // Convert world position to grid coordinates
+      const gridX = Math.floor((point.x + offsetX) / voxelSize);
+      const gridY = Math.floor((point.y + offsetY) / voxelSize);
+      const gridZ = Math.floor((point.z + offsetZ) / voxelSize);
+
+      // Check if within bounds
+      if (gridX >= 0 && gridX < gridSize &&
+          gridY >= 0 && gridY < gridSize &&
+          gridZ >= 0 && gridZ < gridSize) {
+
+        const voxelState = voxelGrid.get(gridX, gridY, gridZ);
+
+        // Found a solid voxel
+        if (voxelState !== VoxelState.Dead) {
+          // Calculate hit normal (approximate)
+          const prevPoint = origin.clone().add(direction.clone().multiplyScalar(distance - step));
+          const normal = point.clone().sub(prevPoint).normalize();
+
+          return {
+            hit: true,
+            x: gridX,
+            y: gridY,
+            z: gridZ,
+            normal: normal
+          };
+        }
+      }
+
+      distance += step;
+    }
+
+    return null;
+  }
+
+  /**
+   * Place a voxel at targeted location
+   */
+  private placeVoxel(): void {
+    const raycast = this.raycastVoxel();
+    if (!raycast) return;
+
+    const voxelGrid = this.physics.getVoxelGrid();
+
+    // Place voxel adjacent to hit surface (in direction of normal)
+    let placeX = raycast.x;
+    let placeY = raycast.y;
+    let placeZ = raycast.z;
+
+    // Determine which face was hit and place adjacent
+    const absNormal = new Vector3(
+      Math.abs(raycast.normal.x),
+      Math.abs(raycast.normal.y),
+      Math.abs(raycast.normal.z)
+    );
+
+    if (absNormal.x > absNormal.y && absNormal.x > absNormal.z) {
+      placeX += raycast.normal.x > 0 ? 1 : -1;
+    } else if (absNormal.y > absNormal.x && absNormal.y > absNormal.z) {
+      placeY += raycast.normal.y > 0 ? 1 : -1;
+    } else {
+      placeZ += raycast.normal.z > 0 ? 1 : -1;
+    }
+
+    // Check bounds
+    if (placeX >= 0 && placeX < voxelGrid.width &&
+        placeY >= 0 && placeY < voxelGrid.height &&
+        placeZ >= 0 && placeZ < voxelGrid.depth) {
+
+      // Check if space is empty
+      if (voxelGrid.get(placeX, placeY, placeZ) === VoxelState.Dead) {
+        voxelGrid.set(placeX, placeY, placeZ, this.selectedVoxelState);
+        console.log(`Placed ${VoxelState[this.selectedVoxelState]} voxel at (${placeX}, ${placeY}, ${placeZ})`);
+      }
+    }
+  }
+
+  /**
+   * Remove voxel at targeted location
+   */
+  private removeVoxel(): void {
+    const raycast = this.raycastVoxel();
+    if (!raycast) return;
+
+    const voxelGrid = this.physics.getVoxelGrid();
+    voxelGrid.set(raycast.x, raycast.y, raycast.z, VoxelState.Dead);
+    console.log(`Removed voxel at (${raycast.x}, ${raycast.y}, ${raycast.z})`);
+  }
+
+  /**
+   * Pick voxel type at targeted location
+   */
+  private pickVoxel(): void {
+    const raycast = this.raycastVoxel();
+    if (!raycast) return;
+
+    const voxelGrid = this.physics.getVoxelGrid();
+    const state = voxelGrid.get(raycast.x, raycast.y, raycast.z);
+
+    if (state !== VoxelState.Dead) {
+      this.selectedVoxelState = state;
+      console.log(`Picked ${VoxelState[state]} voxel`);
+    }
   }
 
   /**

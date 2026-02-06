@@ -5,6 +5,7 @@ import { OrganicRenderer, RenderMode } from '../rendering/OrganicRenderer';
 import { PostProcessingManager } from '../rendering/PostProcessing';
 import { Player } from './Player';
 import { CASimulatorWorker } from '../workers/WorkerPool';
+import { TimeManipulation } from './TimeManipulation';
 import { Vector3 } from 'three';
 
 /**
@@ -36,6 +37,7 @@ export class Game {
   private renderStyle: RenderStyle = RenderStyle.Organic;
   private usePostProcessing: boolean = true;
   private isCAStepInProgress: boolean = false;
+  private timeManipulation: TimeManipulation;
 
   constructor(canvas: HTMLCanvasElement, gridSize = 32, caUpdateInterval = 2000) {
     // Initialize CA simulator (main thread fallback)
@@ -52,6 +54,9 @@ export class Game {
     if (this.useWorkers) {
       this.initializeWorkerSimulator(gridSize);
     }
+
+    // Initialize time manipulation
+    this.timeManipulation = new TimeManipulation(this.simulator, caUpdateInterval);
 
     // Get active renderer (organic by default)
     const activeRenderer = this.getActiveRenderer();
@@ -92,8 +97,9 @@ export class Game {
     this.frameCount = 0;
     this.fpsUpdateTime = 0;
 
-    // Setup keyboard shortcuts for render controls
+    // Setup keyboard shortcuts for render and time controls
     this.setupRenderControls();
+    this.setupTimeControls();
   }
 
   /**
@@ -120,6 +126,42 @@ export class Game {
         case 'v':
           // Toggle vignette
           this.toggleVignette();
+          break;
+      }
+    });
+  }
+
+  /**
+   * Setup keyboard controls for time manipulation
+   */
+  private setupTimeControls(): void {
+    document.addEventListener('keydown', (event) => {
+      switch (event.key) {
+        case 'p':
+        case 'P':
+          // Pause/Unpause
+          this.timeManipulation.togglePause();
+          break;
+        case '[':
+          // Slow down time
+          this.timeManipulation.slowDown();
+          this.caUpdateInterval = this.timeManipulation.getUpdateInterval();
+          break;
+        case ']':
+          // Speed up time
+          this.timeManipulation.speedUp();
+          this.caUpdateInterval = this.timeManipulation.getUpdateInterval();
+          break;
+        case ',':
+          // Rewind one step
+          if (this.timeManipulation.rewind()) {
+            this.getActiveRenderer().renderGrid(this.simulator.getGrid());
+          }
+          break;
+        case '.':
+          // Step forward one tick (when paused)
+          this.timeManipulation.stepForward();
+          this.getActiveRenderer().renderGrid(this.simulator.getGrid());
           break;
       }
     });
@@ -276,10 +318,16 @@ export class Game {
       this.updateUI();
     }
 
-    // Update CA simulation at fixed interval
-    if (currentTime - this.lastCAUpdateTime >= this.caUpdateInterval && !this.isCAStepInProgress) {
+    // Update CA simulation at fixed interval (unless paused)
+    if (currentTime - this.lastCAUpdateTime >= this.caUpdateInterval &&
+        !this.isCAStepInProgress &&
+        !this.timeManipulation.isPaused()) {
+
       this.isCAStepInProgress = true;
       this.lastCAUpdateTime = currentTime;
+
+      // Save snapshot for rewind functionality
+      this.timeManipulation.saveSnapshot();
 
       if (this.useWorkers && this.workerSimulator) {
         // Use Web Worker for CA simulation (async, non-blocking)

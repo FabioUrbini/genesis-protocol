@@ -45,7 +45,7 @@ npm test
 
 ## 🎯 Current Implementation Status
 
-### ✅ Completed (Phase 4 - Performance & Worker Integration)
+### ✅ Completed (Phase 5 - Player Interaction & World Manipulation)
 
 1. **Project Setup**
    - TypeScript with strict mode
@@ -80,7 +80,7 @@ npm test
    - Safe zone regeneration (near crystallized voxels)
    - Death and respawn mechanics
 
-5. **Player System** ⭐ ENHANCED
+5. **Player System** ⭐ FULLY INTERACTIVE
    - First-person player entity
    - WASD movement controls
    - Mouse look with pointer lock
@@ -88,6 +88,10 @@ npm test
    - Energy and oxygen survival mechanics
    - **Fly Mode (F key)** - Noclip flying for easy exploration
    - **God Mode (G key)** - Disable energy/oxygen drain
+   - **Voxel Placement/Removal** - Left/right click to modify world
+   - **Raycasting System** - Accurate voxel targeting
+   - **Voxel Type Selection** - Number keys 1-4 to select voxel type
+   - **Middle Click** - Pick voxel type from world
    - Smooth camera controls
 
 6. **Rendering System** ⭐ OVERHAULED & OPTIMIZED
@@ -131,12 +135,25 @@ npm test
        - `F` - Toggle Fly Mode (noclip)
        - `G` - Toggle God Mode
        - `M` - Toggle Render Mode (cube/organic)
+     - **World Interaction:**
+       - `Left Click` - Remove voxel
+       - `Right Click` - Place voxel
+       - `Middle Click` - Pick voxel type
+       - `1` - Select Alive (Blue)
+       - `2` - Select Energized (Orange)
+       - `3` - Select Crystallized (Cyan)
+       - `4` - Select Corrupted (Red)
+     - **Time Control:**
+       - `P` - Pause/Unpause
+       - `[` - Slow down time
+       - `]` - Speed up time
+       - `,` - Rewind (undo last step)
+       - `.` - Step forward (when paused)
      - **Effects:**
        - `B` - Toggle Bloom
        - `V` - Toggle Vignette
      - **Simulation:**
        - `R` - Reset simulation
-       - `1 2 3` - CA speed (slow/normal/fast)
        - `ESC` - Release mouse
 
 9. **Web Workers** ⭐ NEW & INTEGRATED
@@ -153,15 +170,41 @@ npm test
     - Test coverage for core systems
     - Vitest test framework configured
 
+11. **Time Manipulation** ⭐ NEW
+    - Pause/unpause simulation (P key)
+    - Speed controls ([ to slow down, ] to speed up)
+    - Rewind functionality (comma key) - undo last 10 steps
+    - Step forward when paused (period key)
+    - History system for time travel
+    - Multiple time modes: Normal, Slow, Fast, Paused
+
+12. **Pattern Library** ⭐ NEW
+    - Save custom voxel patterns
+    - Load and spawn saved patterns
+    - Export/import patterns to JSON
+    - LocalStorage persistence
+    - Pattern categories (Still Life, Oscillators, Spaceships, etc.)
+    - 13 predefined patterns included
+    - Capture regions of the world as patterns
+
+13. **Pattern Seeds** ⭐ NEW
+    - Predefined 3D Game of Life patterns
+    - Still Life: Block, Tube, Pyramid, Platform, Tower
+    - Oscillators: Blinker 3D, Pulsar
+    - Spaceships: Glider 3D, Lightweight Spaceship 3D
+    - Special: Energy Core, Crystal Cluster, Corruption Seed
+    - Random Cluster for experimentation
+
 ### 🔄 Future Enhancements
 
 - Occlusion culling for interior voxels
 - LOD system for distant chunks
 - Inventory system for resource collection
-- Pattern library (save/load formations)
-- Time manipulation tools
+- Rule Injectors for temporary CA modifications
+- Stabilizer Nodes to prevent evolution
 - Multiple biomes with different rule sets
 - Procedural world generation
+- Chunk streaming system
 - Resource harvesting mechanics
 - Advanced rendering (PBR, deferred rendering)
 - Frustum and occlusion culling
