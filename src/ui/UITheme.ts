@@ -474,4 +474,74 @@ export class UITheme {
       this.styleElement.remove();
     }
   }
+
+  /**
+   * Static helper methods for inline styles
+   */
+  static getGlassPanel(): string {
+    return `
+      background: rgba(20, 20, 30, 0.7);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    `;
+  }
+
+  static getGlassCard(): string {
+    return `
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    `;
+  }
+
+  static getButton(): string {
+    return `
+      background: rgba(80, 227, 194, 0.2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(80, 227, 194, 0.5);
+      border-radius: 8px;
+      color: #50e3c2;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      font-weight: 600;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    `;
+  }
+
+  static getButtonSecondary(): string {
+    return `
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.8);
+    `;
+  }
+
+  static getNeonText(color: string = 'cyan'): string {
+    const colors: Record<string, string> = {
+      cyan: '#50e3c2',
+      blue: '#3b82f6',
+      purple: '#a855f7',
+      pink: '#ec4899',
+      yellow: '#fbbf24',
+      green: '#4ade80',
+      red: '#ef4444',
+    };
+    const colorValue = colors[color] || colors.cyan;
+    const glowColor = colorValue + '80';
+
+    return `
+      color: ${colorValue};
+      text-shadow:
+        0 0 10px ${glowColor},
+        0 0 20px ${glowColor},
+        0 0 30px ${glowColor};
+    `;
+  }
 }

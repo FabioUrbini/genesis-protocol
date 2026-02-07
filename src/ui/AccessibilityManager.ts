@@ -20,8 +20,8 @@ export class AccessibilityManager {
   private settings: AccessibilitySettings;
   private theme: UITheme;
   private liveRegion: HTMLElement | null = null;
-  private focusableElements: HTMLElement[] = [];
-  private currentFocusIndex: number = -1;
+  private _focusableElements: HTMLElement[] = [];
+  private _currentFocusIndex: number = -1;
 
   constructor() {
     this.theme = UITheme.getInstance();
@@ -123,7 +123,7 @@ export class AccessibilityManager {
    */
   private updateFocusableElements(): void {
     const selector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    this.focusableElements = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
+    this._focusableElements = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
   }
 
   /**
@@ -329,12 +329,12 @@ export class AccessibilityManager {
         if (e.shiftKey) {
           if (document.activeElement === firstElement) {
             e.preventDefault();
-            lastElement.focus();
+            lastElement?.focus();
           }
         } else {
           if (document.activeElement === lastElement) {
             e.preventDefault();
-            firstElement.focus();
+            firstElement?.focus();
           }
         }
       };

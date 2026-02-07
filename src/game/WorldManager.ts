@@ -61,7 +61,7 @@ class NoiseGenerator {
     for (let i = 255; i > 0; i--) {
       rng = (rng * 9301 + 49297) % 233280;
       const j = Math.floor((rng / 233280) * (i + 1));
-      [p[i], p[j]] = [p[j], p[i]];
+      [p[i], p[j]] = [p[j]!, p[i]!];
     }
 
     // Duplicate for overflow handling
@@ -99,24 +99,24 @@ class NoiseGenerator {
     const v = this.fade(y);
     const w = this.fade(z);
 
-    const A = this.perm[X] + Y;
-    const AA = this.perm[A] + Z;
-    const AB = this.perm[A + 1] + Z;
-    const B = this.perm[X + 1] + Y;
-    const BA = this.perm[B] + Z;
-    const BB = this.perm[B + 1] + Z;
+    const A = this.perm[X]! + Y;
+    const AA = this.perm[A]! + Z;
+    const AB = this.perm[A + 1]! + Z;
+    const B = this.perm[X + 1]! + Y;
+    const BA = this.perm[B]! + Z;
+    const BB = this.perm[B + 1]! + Z;
 
     return this.lerp(w,
       this.lerp(v,
-        this.lerp(u, this.grad(this.perm[AA], x, y, z),
-                     this.grad(this.perm[BA], x - 1, y, z)),
-        this.lerp(u, this.grad(this.perm[AB], x, y - 1, z),
-                     this.grad(this.perm[BB], x - 1, y - 1, z))),
+        this.lerp(u, this.grad(this.perm[AA]!, x, y, z),
+                     this.grad(this.perm[BA]!, x - 1, y, z)),
+        this.lerp(u, this.grad(this.perm[AB]!, x, y - 1, z),
+                     this.grad(this.perm[BB]!, x - 1, y - 1, z))),
       this.lerp(v,
-        this.lerp(u, this.grad(this.perm[AA + 1], x, y, z - 1),
-                     this.grad(this.perm[BA + 1], x - 1, y, z - 1)),
-        this.lerp(u, this.grad(this.perm[AB + 1], x, y - 1, z - 1),
-                     this.grad(this.perm[BB + 1], x - 1, y - 1, z - 1)))
+        this.lerp(u, this.grad(this.perm[AA + 1]!, x, y, z - 1),
+                     this.grad(this.perm[BA + 1]!, x - 1, y, z - 1)),
+        this.lerp(u, this.grad(this.perm[AB + 1]!, x, y - 1, z - 1),
+                     this.grad(this.perm[BB + 1]!, x - 1, y - 1, z - 1)))
     );
   }
 
@@ -251,7 +251,7 @@ export class WorldManager {
     // Map noise to biome types
     const biomes = Array.from(BIOME_CONFIGS.keys());
     const index = Math.floor(((noiseValue + variation * 0.3 + 1) / 2) * biomes.length);
-    return biomes[Math.min(index, biomes.length - 1)];
+    return biomes[Math.min(index, biomes.length - 1)]!;
   }
 
   /**
@@ -330,7 +330,7 @@ export class WorldManager {
     const biomeCount = new Map<BiomeType, number>();
 
     // Sample points in region
-    const samples = 27; // 3x3x3 grid
+    const _samples = 27; // 3x3x3 grid
     const step = (radius * 2) / 3;
 
     for (let dx = -1; dx <= 1; dx++) {
@@ -394,7 +394,7 @@ export class WorldManager {
   /**
    * Add scattered features to world (geodes, ruins, etc.)
    */
-  public addFeatures(grid: VoxelGrid, offsetX: number = 0, offsetY: number = 0, offsetZ: number = 0): void {
+  public addFeatures(grid: VoxelGrid, _offsetX: number = 0, _offsetY: number = 0, _offsetZ: number = 0): void {
     const width = grid.width;
     const height = grid.height;
     const depth = grid.depth;

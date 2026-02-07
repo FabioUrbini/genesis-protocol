@@ -247,6 +247,8 @@ export class DimensionRiftManager {
 
         for (let i = 0; i < rift.particles.length; i++) {
           const particle = rift.particles[i];
+          if (!particle) continue;
+
           const angle = (i / rift.particles.length) * Math.PI * 2 + time;
           const distance = rift.radius * 0.8;
           const verticalOscillation = Math.sin(time * 2 + i) * rift.radius * 0.3;
@@ -290,6 +292,9 @@ export class DimensionRiftManager {
 
     // Random target biome
     const targetBiome = biomes[Math.floor(Math.random() * biomes.length)];
+    if (!targetBiome) {
+      throw new Error('No biomes available');
+    }
 
     // Random distant target position
     const targetPosition = new Vector3(

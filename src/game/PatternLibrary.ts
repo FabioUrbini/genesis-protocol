@@ -119,7 +119,7 @@ export class PatternLibrary {
             const voxelState = pattern.data[index];
 
             // Only place if not dead or if replacing
-            if (voxelState !== VoxelState.Dead || replace) {
+            if (voxelState !== undefined && (voxelState !== VoxelState.Dead || replace)) {
               const currentState = grid.get(gridX, gridY, gridZ);
 
               // Only place if space is empty or we're replacing
@@ -238,7 +238,7 @@ export class PatternLibrary {
     };
 
     // Export patterns
-    for (const [name, pattern] of this.patterns) {
+    for (const [_name, pattern] of this.patterns) {
       exportData.patterns.push({
         ...pattern,
         data: Array.from(pattern.data),

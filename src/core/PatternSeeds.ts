@@ -13,7 +13,7 @@ function createPattern(
   name: string,
   description: string,
   voxels: VoxelState[][][],
-  category: PatternCategory = PatternCategory.Custom
+  _category: PatternCategory = PatternCategory.Custom
 ): Pattern {
   const depth = voxels.length;
   const height = voxels[0]?.length || 0;

@@ -215,6 +215,8 @@ export class TutorialSystem {
     if (index < 0 || index >= this.steps.length) return;
 
     const step = this.steps[index];
+    if (!step) return;
+
     this.currentStepIndex = index;
 
     // Update UI
@@ -223,8 +225,8 @@ export class TutorialSystem {
     const current = document.getElementById('tutorial-current');
     const total = document.getElementById('tutorial-total');
     const progress = document.getElementById('tutorial-progress');
-    const prevBtn = document.getElementById('tutorial-prev');
-    const nextBtn = document.getElementById('tutorial-next');
+    const prevBtn = document.getElementById('tutorial-prev') as HTMLButtonElement | null;
+    const nextBtn = document.getElementById('tutorial-next') as HTMLButtonElement | null;
 
     if (title) title.textContent = step.title;
     if (message) message.textContent = step.message;
@@ -296,7 +298,7 @@ export class TutorialSystem {
 
   nextStep(): void {
     const step = this.steps[this.currentStepIndex];
-    if (step.onComplete) {
+    if (step?.onComplete) {
       step.onComplete();
     }
 
@@ -333,7 +335,7 @@ export class TutorialSystem {
     }
   }
 
-  private shouldRepeat(tutorialId: string): boolean {
+  private shouldRepeat(_tutorialId: string): boolean {
     // Could implement logic to check if user wants to repeat
     return false;
   }

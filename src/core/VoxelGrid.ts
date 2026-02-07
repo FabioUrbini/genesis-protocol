@@ -87,6 +87,16 @@ export class VoxelGrid {
   }
 
   /**
+   * Set data from array (for deserialization)
+   */
+  public setData(data: Uint8Array): void {
+    if (data.length !== this.data.length) {
+      throw new Error(`Data size mismatch: expected ${this.data.length}, got ${data.length}`);
+    }
+    this.data.set(data);
+  }
+
+  /**
    * Clone this grid
    */
   public clone(): VoxelGrid {

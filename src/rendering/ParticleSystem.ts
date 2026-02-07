@@ -162,6 +162,7 @@ export class ParticleSystem {
     // Update all particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const particle = this.particles[i];
+      if (!particle) continue;
 
       // Update particle life
       particle.life -= delta;
@@ -269,6 +270,8 @@ export class ParticleSystem {
     // Fill with active particles
     for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i];
+      if (!particle) continue;
+
       const i3 = i * 3;
 
       this.positions[i3] = particle.position.x;

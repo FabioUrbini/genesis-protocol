@@ -25,16 +25,16 @@ const EMISSIVE_INTENSITY: Record<VoxelState, number> = {
 };
 
 /**
- * Face direction for greedy meshing
+ * Face direction for greedy meshing (unused but kept for future reference)
  */
-enum FaceDirection {
-  PosX = 0,
-  NegX = 1,
-  PosY = 2,
-  NegY = 3,
-  PosZ = 4,
-  NegZ = 5,
-}
+// enum _FaceDirection {
+//   PosX = 0,
+//   NegX = 1,
+//   PosY = 2,
+//   NegY = 3,
+//   PosZ = 4,
+//   NegZ = 5,
+// }
 
 /**
  * Basic voxel renderer using Three.js
@@ -153,16 +153,16 @@ export class VoxelRenderer {
         const q = [0, 0, 0];
         q[d] = 1;
 
-        const mask: (VoxelState | null)[] = new Array(dims[u] * dims[v]);
+        const mask: (VoxelState | null)[] = new Array(dims[u]! * dims[v]!);
 
         // Sweep through each layer
-        for (x[d] = -1; x[d] < dims[d];) {
+        for (x[d] = -1; x[d]! < dims[d]!;) {
           // Build mask
           let n = 0;
-          for (x[v] = 0; x[v] < dims[v]; x[v]++) {
-            for (x[u] = 0; x[u] < dims[u]; x[u]++) {
-              const currentVoxel = (x[d] >= 0) ? grid.get(x[0], x[1], x[2]) : VoxelState.Dead;
-              const nextVoxel = (x[d] < dims[d] - 1) ? grid.get(x[0] + q[0], x[1] + q[1], x[2] + q[2]) : VoxelState.Dead;
+          for (x[v] = 0; x[v]! < dims[v]!; x[v]++) {
+            for (x[u] = 0; x[u]! < dims[u]!; x[u]++) {
+              const currentVoxel = (x[d]! >= 0) ? grid.get(x[0]!, x[1]!, x[2]!) : VoxelState.Dead;
+              const nextVoxel = (x[d]! < dims[d]! - 1) ? grid.get(x[0]! + q[0]!, x[1]! + q[1]!, x[2]! + q[2]!) : VoxelState.Dead;
 
               // Check if we need a face here
               if (currentVoxel === state && nextVoxel !== state) {
@@ -175,25 +175,25 @@ export class VoxelRenderer {
             }
           }
 
-          x[d]++;
+          x[d]!++;
 
           // Generate mesh from mask using greedy meshing
           n = 0;
-          for (let j = 0; j < dims[v]; j++) {
-            for (let i = 0; i < dims[u];) {
+          for (let j = 0; j < dims[v]!; j++) {
+            for (let i = 0; i < dims[u]!;) {
               if (mask[n] !== null) {
                 // Compute width
                 let w = 1;
-                while (i + w < dims[u] && mask[n + w] === mask[n]) {
+                while (i + w < dims[u]! && mask[n + w] === mask[n]) {
                   w++;
                 }
 
                 // Compute height
                 let h = 1;
                 let done = false;
-                while (j + h < dims[v]) {
+                while (j + h < dims[v]!) {
                   for (let k = 0; k < w; k++) {
-                    if (mask[n + k + h * dims[u]] !== mask[n]) {
+                    if (mask[n + k + h * dims[u]!] !== mask[n]) {
                       done = true;
                       break;
                     }
@@ -229,7 +229,7 @@ export class VoxelRenderer {
                 // Clear mask
                 for (let l = 0; l < h; l++) {
                   for (let k = 0; k < w; k++) {
-                    mask[n + k + l * dims[u]] = null;
+                    mask[n + k + l * dims[u]!] = null;
                   }
                 }
 
@@ -290,31 +290,31 @@ export class VoxelRenderer {
 
     // Calculate vertices
     const v1 = [
-      (x[0] * s) - offsetX,
-      (x[1] * s) - offsetY,
-      (x[2] * s) - offsetZ,
+      (x[0]! * s) - offsetX,
+      (x[1]! * s) - offsetY,
+      (x[2]! * s) - offsetZ,
     ];
     const v2 = [
-      ((x[0] + du[0]) * s) - offsetX,
-      ((x[1] + du[1]) * s) - offsetY,
-      ((x[2] + du[2]) * s) - offsetZ,
+      ((x[0]! + du[0]!) * s) - offsetX,
+      ((x[1]! + du[1]!) * s) - offsetY,
+      ((x[2]! + du[2]!) * s) - offsetZ,
     ];
     const v3 = [
-      ((x[0] + du[0] + dv[0]) * s) - offsetX,
-      ((x[1] + du[1] + dv[1]) * s) - offsetY,
-      ((x[2] + du[2] + dv[2]) * s) - offsetZ,
+      ((x[0]! + du[0]! + dv[0]!) * s) - offsetX,
+      ((x[1]! + du[1]! + dv[1]!) * s) - offsetY,
+      ((x[2]! + du[2]! + dv[2]!) * s) - offsetZ,
     ];
     const v4 = [
-      ((x[0] + dv[0]) * s) - offsetX,
-      ((x[1] + dv[1]) * s) - offsetY,
-      ((x[2] + dv[2]) * s) - offsetZ,
+      ((x[0]! + dv[0]!) * s) - offsetX,
+      ((x[1]! + dv[1]!) * s) - offsetY,
+      ((x[2]! + dv[2]!) * s) - offsetZ,
     ];
 
     // Add positions
     positions.push(...v1, ...v2, ...v3, ...v4);
 
     // Calculate normal
-    const normal = [q[0], q[1], q[2]];
+    const normal = [q[0]!, q[1]!, q[2]!];
     for (let i = 0; i < 4; i++) {
       normals.push(...normal);
     }

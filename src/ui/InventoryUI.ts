@@ -3,7 +3,7 @@
  * Visual interface for the inventory system
  */
 
-import { InventorySystem, ItemType, InventorySlot } from '../game/InventorySystem';
+import { InventorySystem, ResourceType, InventoryItem, RESOURCE_INFO } from '../game/InventorySystem';
 
 export class InventoryUI {
   private container: HTMLElement | null = null;
@@ -56,24 +56,27 @@ export class InventoryUI {
     const grid = document.getElementById('inventory-grid');
     if (!grid) return;
 
-    const slots = this.inventory.getAllSlots();
+    const items = this.inventory.getAllItems();
     this.slotElements = [];
 
-    slots.forEach((slot, index) => {
+    // Create slots for all resource types
+    Object.values(ResourceType).forEach((resourceType, index) => {
       const slotElement = document.createElement('div');
       slotElement.className = 'inventory-slot';
       slotElement.dataset.slotIndex = index.toString();
 
-      if (slot.item) {
+      const quantity = this.inventory.getQuantity(resourceType);
+
+      if (quantity > 0) {
         slotElement.classList.add('has-item');
         slotElement.innerHTML = `
-          <div class="item-icon ${this.getItemClass(slot.item.type)}">
-            ${this.getItemIcon(slot.item.type)}
+          <div class="item-icon ${this.getItemClass(resourceType)}">
+            ${this.getItemIcon(resourceType)}
           </div>
-          <div class="item-quantity">${slot.quantity}</div>
+          <div class="item-quantity">${quantity}</div>
           <div class="item-tooltip">
-            <div class="item-name">${this.getItemName(slot.item.type)}</div>
-            <div class="item-desc">${this.getItemDescription(slot.item.type)}</div>
+            <div class="item-name">${this.getItemName(resourceType)}</div>
+            <div class="item-desc">${this.getItemDescription(resourceType)}</div>
           </div>
         `;
       } else {
@@ -118,52 +121,49 @@ export class InventoryUI {
   }
 
   private handleSlotClick(index: number): void {
-    const slot = this.inventory.getSlot(index);
-    if (slot && slot.item && slot.item.consumable) {
-      // Use consumable item
-      console.log(`Using item in slot ${index}`);
-      // TODO: Implement item usage
+    const resourceTypes = Object.values(ResourceType);
+    if (index >= 0 && index < resourceTypes.length) {
+      const resourceType = resourceTypes[index];
+      const info = RESOURCE_INFO[resourceType];
+
+      if (info.canConsume && this.inventory.getQuantity(resourceType) > 0) {
+        const energyGained = this.inventory.consumeResource(resourceType);
+        console.log(`Used ${info.name}, gained ${energyGained} energy`);
+        this.refresh();
+      }
     }
   }
 
-  private getItemClass(type: ItemType): string {
-    const classes: Record<ItemType, string> = {
-      [ItemType.EnergyCore]: 'item-energy',
-      [ItemType.CrystalizedVoxel]: 'item-crystal',
-      [ItemType.TemporalShard]: 'item-temporal',
-      [ItemType.PatternFragment]: 'item-pattern',
-      [ItemType.VoidEssence]: 'item-void',
-      [ItemType.QuantumDust]: 'item-quantum'
+  private getItemClass(type: ResourceType): string {
+    const classes: Record<ResourceType, string> = {
+      [ResourceType.EnergyCore]: 'item-energy',
+      [ResourceType.CrystallizedVoxel]: 'item-crystal',
+      [ResourceType.TemporalShard]: 'item-temporal',
+      [ResourceType.CorruptedFragment]: 'item-corrupted',
+      [ResourceType.AliveEssence]: 'item-alive',
+      [ResourceType.EnergizedCell]: 'item-energized'
     };
     return classes[type] || 'item-default';
   }
 
-  private getItemIcon(type: ItemType): string {
-    const icons: Record<ItemType, string> = {
-      [ItemType.EnergyCore]: '⚡',
-      [ItemType.CrystalizedVoxel]: '💎',
-      [ItemType.TemporalShard]: '⏳',
-      [ItemType.PatternFragment]: '🧩',
-      [ItemType.VoidEssence]: '🌑',
-      [ItemType.QuantumDust]: '✨'
+  private getItemIcon(type: ResourceType): string {
+    const icons: Record<ResourceType, string> = {
+      [ResourceType.EnergyCore]: '⚡',
+      [ResourceType.CrystallizedVoxel]: '💎',
+      [ResourceType.TemporalShard]: '⏳',
+      [ResourceType.CorruptedFragment]: '🧨',
+      [ResourceType.AliveEssence]: '🌟',
+      [ResourceType.EnergizedCell]: '✨'
     };
     return icons[type] || '?';
   }
 
-  private getItemName(type: ItemType): string {
-    return ItemType[type].replace(/([A-Z])/g, ' $1').trim();
+  private getItemName(type: ResourceType): string {
+    return RESOURCE_INFO[type].name;
   }
 
-  private getItemDescription(type: ItemType): string {
-    const descriptions: Record<ItemType, string> = {
-      [ItemType.EnergyCore]: 'Restores 30 energy',
-      [ItemType.CrystalizedVoxel]: 'Pure crystallized matter',
-      [ItemType.TemporalShard]: 'Fragment of frozen time',
-      [ItemType.PatternFragment]: 'Complex CA pattern data',
-      [ItemType.VoidEssence]: 'Essence from the void',
-      [ItemType.QuantumDust]: 'Quantum-entangled particles'
-    };
-    return descriptions[type] || 'Unknown item';
+  private getItemDescription(type: ResourceType): string {
+    return RESOURCE_INFO[type].description;
   }
 
   private exportInventory(): void {
@@ -414,7 +414,7 @@ export class InventoryUI {
     const usedSlots = document.getElementById('inventory-used-slots');
     const maxSlots = document.getElementById('inventory-max-slots');
     if (usedSlots) {
-      usedSlots.textContent = this.inventory.getUsedSlots().toString();
+      usedSlots.textContent = this.inventory.getOccupiedSlots().toString();
     }
     if (maxSlots) {
       maxSlots.textContent = this.inventory.getMaxSlots().toString();

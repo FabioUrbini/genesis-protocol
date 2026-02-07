@@ -185,9 +185,10 @@ export class SurvivalMode extends GameMode {
         this.nextWaveTimer = 5000; // 5 seconds before first wave
 
         // Give starting resources
-        if (this.config.startingResources && this.player.inventory) {
+        if (this.config.startingResources) {
+            const inventory = this.player.getInventory();
             this.config.startingResources.forEach((amount, resourceType) => {
-                this.player.inventory!.addItem(resourceType, amount);
+                inventory.addResource(resourceType as any, amount);
             });
         }
     }
@@ -287,12 +288,12 @@ export class SurvivalMode extends GameMode {
         console.log(`Enemy spawned: ${pattern} at ${spawnPos.toArray()}`);
     }
 
-    onVoxelPlaced(position: Vector3, voxelType: number): void {
+    onVoxelPlaced(_position: Vector3, _voxelType: number): void {
         // Small score for building
         this.addScore(1);
     }
 
-    onVoxelRemoved(position: Vector3, voxelType: number): void {
+    onVoxelRemoved(_position: Vector3, voxelType: number): void {
         // Check if it was a hostile voxel
         if (voxelType === 1 || voxelType === 2) { // Assuming hostile types
             this.enemiesDefeated++;
@@ -301,7 +302,7 @@ export class SurvivalMode extends GameMode {
         }
     }
 
-    onPatternSpawned(patternName: string): void {
+    onPatternSpawned(_patternName: string): void {
         this.addScore(50);
     }
 
@@ -420,9 +421,10 @@ export class ExplorerMode extends GameMode {
         console.log('Explorer Mode started! Go forth and discover!');
         this.lastPosition = this.player.getPosition().clone();
 
-        if (this.config.startingResources && this.player.inventory) {
+        if (this.config.startingResources) {
+            const inventory = this.player.getInventory();
             this.config.startingResources.forEach((amount, resourceType) => {
-                this.player.inventory!.addItem(resourceType, amount);
+                inventory.addResource(resourceType as any, amount);
             });
         }
     }
@@ -431,7 +433,7 @@ export class ExplorerMode extends GameMode {
         console.log(`Explorer Mode ended. Biomes: ${this.discoveredBiomes.size}, Distance: ${Math.floor(this.distanceTraveled)}`);
     }
 
-    update(deltaTime: number): void {
+    update(_deltaTime: number): void {
         if (!this.isActive) return;
 
         const currentPos = this.player.getPosition();
@@ -460,15 +462,15 @@ export class ExplorerMode extends GameMode {
         }
     }
 
-    onVoxelPlaced(position: Vector3, voxelType: number): void {
+    onVoxelPlaced(_position: Vector3, _voxelType: number): void {
         this.addScore(1);
     }
 
-    onVoxelRemoved(position: Vector3, voxelType: number): void {
+    onVoxelRemoved(_position: Vector3, _voxelType: number): void {
         // No penalty in explorer mode
     }
 
-    onPatternSpawned(patternName: string): void {
+    onPatternSpawned(_patternName: string): void {
         this.addScore(25);
     }
 
@@ -608,37 +610,34 @@ export class ArchitectMode extends GameMode {
         console.log('Architect Mode started! Build without limits!');
 
         // Give unlimited resources
-        if (this.config.startingResources && this.player.inventory) {
+        if (this.config.startingResources) {
+            const inventory = this.player.getInventory();
             this.config.startingResources.forEach((amount, resourceType) => {
-                this.player.inventory!.addItem(resourceType, amount);
+                inventory.addResource(resourceType as any, amount);
             });
         }
 
-        // Disable energy/oxygen drain
-        if (this.player.environmentalSuit) {
-            // Store original values and set to no drain
-        }
+        // Note: Energy/oxygen drain is already disabled via game mode rules
     }
 
     onEnd(): void {
         console.log(`Architect Mode ended. Voxels placed: ${this.voxelsPlaced}, Structures: ${this.structuresBuilt}`);
     }
 
-    update(deltaTime: number): void {
+    update(_deltaTime: number): void {
         if (!this.isActive) return;
 
         // Keep resources topped up
-        if (this.player.inventory) {
-            this.config.startingResources?.forEach((amount, resourceType) => {
-                const current = this.player.inventory!.getItemCount(resourceType);
-                if (current < amount) {
-                    this.player.inventory!.addItem(resourceType, amount - current);
-                }
-            });
-        }
+        const inventory = this.player.getInventory();
+        this.config.startingResources?.forEach((amount, resourceType) => {
+            const current = inventory.getQuantity(resourceType as any);
+            if (current < amount) {
+                inventory.addResource(resourceType as any, amount - current);
+            }
+        });
     }
 
-    onVoxelPlaced(position: Vector3, voxelType: number): void {
+    onVoxelPlaced(_position: Vector3, _voxelType: number): void {
         this.voxelsPlaced++;
         this.addScore(1);
 
@@ -652,11 +651,11 @@ export class ArchitectMode extends GameMode {
         }
     }
 
-    onVoxelRemoved(position: Vector3, voxelType: number): void {
+    onVoxelRemoved(_position: Vector3, _voxelType: number): void {
         // No penalty
     }
 
-    onPatternSpawned(patternName: string): void {
+    onPatternSpawned(_patternName: string): void {
         this.addScore(50);
     }
 
@@ -665,7 +664,7 @@ export class ArchitectMode extends GameMode {
         console.log('Architect mode: death disabled');
     }
 
-    onStructureBuilt(structureType: string): void {
+    onStructureBuilt(_structureType: string): void {
         this.structuresBuilt++;
         this.addScore(100);
 
@@ -826,7 +825,7 @@ export class PuzzleMode extends GameMode {
         }
     }
 
-    onVoxelPlaced(position: Vector3, voxelType: number): void {
+    onVoxelPlaced(_position: Vector3, _voxelType: number): void {
         this.movesUsed++;
 
         const puzzle = this.puzzles[this.currentPuzzle];
@@ -837,7 +836,7 @@ export class PuzzleMode extends GameMode {
         }
     }
 
-    onVoxelRemoved(position: Vector3, voxelType: number): void {
+    onVoxelRemoved(_position: Vector3, _voxelType: number): void {
         this.movesUsed++;
     }
 
@@ -866,9 +865,11 @@ export class PuzzleMode extends GameMode {
         this.hintsUsed = 0;
 
         const puzzle = this.puzzles[index];
-        console.log(`Loading puzzle ${index + 1}: ${puzzle.name}`);
-        console.log(`Description: ${puzzle.description}`);
-        console.log(`Max moves: ${puzzle.maxMoves}`);
+        if (puzzle) {
+            console.log(`Loading puzzle ${index + 1}: ${puzzle.name}`);
+            console.log(`Description: ${puzzle.description}`);
+            console.log(`Max moves: ${puzzle.maxMoves}`);
+        }
 
         // TODO: Setup puzzle environment
     }
@@ -880,6 +881,8 @@ export class PuzzleMode extends GameMode {
 
     private completePuzzle(): void {
         const puzzle = this.puzzles[this.currentPuzzle];
+        if (!puzzle) return;
+
         console.log(`Puzzle completed: ${puzzle.name}`);
         console.log(`Moves: ${this.movesUsed}/${puzzle.maxMoves}, Time: ${this.timeUsed.toFixed(1)}s`);
 
@@ -913,8 +916,10 @@ export class PuzzleMode extends GameMode {
     useHint(): void {
         this.hintsUsed++;
         const puzzle = this.puzzles[this.currentPuzzle];
-        // TODO: Show hint
-        console.log(`Hint for ${puzzle.name}: Try placing voxels in a pattern that matches ${puzzle.targetPattern}`);
+        if (puzzle) {
+            // TODO: Show hint
+            console.log(`Hint for ${puzzle.name}: Try placing voxels in a pattern that matches ${puzzle.targetPattern}`);
+        }
     }
 
     private updateObjective(objectiveId: string, progress: number): void {

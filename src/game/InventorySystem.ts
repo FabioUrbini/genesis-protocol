@@ -295,4 +295,43 @@ export class InventorySystem {
       return false;
     }
   }
+
+  /**
+   * Serialize inventory state
+   */
+  public serialize(): any {
+    const data: Record<string, number> = {};
+
+    for (const [resource, quantity] of this.items) {
+      if (quantity > 0) {
+        data[resource] = quantity;
+      }
+    }
+
+    return {
+      items: data,
+      maxSlots: this.config.maxSlots
+    };
+  }
+
+  /**
+   * Deserialize inventory state
+   */
+  public deserialize(data: any): void {
+    if (!data) return;
+
+    this.clear();
+
+    if (data.items) {
+      for (const [resource, quantity] of Object.entries(data.items)) {
+        if (Object.values(ResourceType).includes(resource as ResourceType)) {
+          this.items.set(resource as ResourceType, quantity as number);
+        }
+      }
+    }
+
+    if (data.maxSlots) {
+      this.config.maxSlots = data.maxSlots;
+    }
+  }
 }

@@ -240,7 +240,7 @@ export class LeaderboardSystem {
 
     async getPlayerBestScore(type: LeaderboardType): Promise<LeaderboardEntry | null> {
         const scores = await this.getPlayerScores(type, 1);
-        return scores.length > 0 ? scores[0] : null;
+        return scores.length > 0 ? scores[0]! : null;
     }
 
     async getLeaderboardStats(type: LeaderboardType): Promise<LeaderboardStats> {

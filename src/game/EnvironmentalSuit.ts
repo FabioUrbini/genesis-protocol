@@ -162,7 +162,7 @@ export class EnvironmentalSuit {
 
     const config = UPGRADES[upgradeType];
     const currentLevel = this.upgradeLevels.get(upgradeType) || 0;
-    const nextLevel = config.levels[currentLevel];
+    const nextLevel = config.levels[currentLevel]!;
 
     // Consume resources
     for (const [resource, amount] of Object.entries(nextLevel.cost)) {
@@ -278,5 +278,80 @@ export class EnvironmentalSuit {
       console.error('Failed to import upgrades:', error);
       return false;
     }
+  }
+
+  /**
+   * Serialize environmental suit state
+   */
+  public serialize(): any {
+    const upgrades: Record<string, number> = {};
+
+    for (const [type, level] of this.upgradeLevels) {
+      if (level > 0) {
+        upgrades[type] = level;
+      }
+    }
+
+    return {
+      upgrades,
+      currentEnergy: this.getCurrentEnergy(),
+      currentOxygen: this.getCurrentOxygen(),
+      maxEnergy: this.getMaxEnergy(),
+      maxOxygen: this.getMaxOxygen()
+    };
+  }
+
+  /**
+   * Deserialize environmental suit state
+   */
+  public deserialize(data: any): void {
+    if (!data) return;
+
+    this.reset();
+
+    if (data.upgrades) {
+      for (const [type, level] of Object.entries(data.upgrades)) {
+        if (Object.values(UpgradeType).includes(type as UpgradeType)) {
+          this.upgradeLevels.set(type as UpgradeType, level as number);
+        }
+      }
+    }
+
+    // Note: currentEnergy, currentOxygen, maxEnergy, maxOxygen will be restored
+    // by the physics system, not here
+  }
+
+  /**
+   * Get current energy (for save/load)
+   */
+  public getCurrentEnergy(): number {
+    // This will be connected to player physics in a future update
+    return 100;
+  }
+
+  /**
+   * Get current oxygen (for save/load)
+   */
+  public getCurrentOxygen(): number {
+    // This will be connected to player physics in a future update
+    return 100;
+  }
+
+  /**
+   * Get max energy based on upgrades
+   */
+  public getMaxEnergy(): number {
+    const baseEnergy = 100;
+    const multiplier = this.getMultiplier(UpgradeType.EnergyCapacity);
+    return baseEnergy * multiplier;
+  }
+
+  /**
+   * Get max oxygen based on upgrades
+   */
+  public getMaxOxygen(): number {
+    const baseOxygen = 100;
+    const multiplier = this.getMultiplier(UpgradeType.OxygenCapacity);
+    return baseOxygen * multiplier;
   }
 }

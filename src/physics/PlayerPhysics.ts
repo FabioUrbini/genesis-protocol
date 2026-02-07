@@ -424,4 +424,11 @@ export class PlayerPhysics {
   public isGodMode(): boolean {
     return this.godMode;
   }
+
+  /**
+   * Get voxel grid for raycasting
+   */
+  public getVoxelGrid(): VoxelGrid {
+    return this.voxelGrid;
+  }
 }

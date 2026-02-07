@@ -100,10 +100,59 @@ export class TimeManipulation {
   }
 
   /**
+   * Get current speed multiplier
+   */
+  public getSpeed(): number {
+    switch (this.mode) {
+      case TimeMode.Normal:
+        return 1.0;
+      case TimeMode.Slow:
+        return 1.0 / this.config.slowMultiplier;
+      case TimeMode.Fast:
+        return 1.0 / this.config.fastMultiplier;
+      case TimeMode.Paused:
+        return 0.0;
+      default:
+        return 1.0;
+    }
+  }
+
+  /**
+   * Set time speed multiplier (1.0 = normal, 0.5 = slow, 2.0 = fast)
+   */
+  public setSpeed(speed: number): void {
+    if (speed <= 0) {
+      this.setMode(TimeMode.Paused);
+    } else if (speed < 0.8) {
+      this.setMode(TimeMode.Slow);
+    } else if (speed > 1.5) {
+      this.setMode(TimeMode.Fast);
+    } else {
+      this.setMode(TimeMode.Normal);
+    }
+  }
+
+  /**
    * Check if simulation is paused
    */
   public isPaused(): boolean {
     return this.mode === TimeMode.Paused;
+  }
+
+  /**
+   * Pause the simulation
+   */
+  public pause(): void {
+    this.setMode(TimeMode.Paused);
+  }
+
+  /**
+   * Resume the simulation
+   */
+  public resume(): void {
+    if (this.mode === TimeMode.Paused) {
+      this.setMode(TimeMode.Normal);
+    }
   }
 
   /**

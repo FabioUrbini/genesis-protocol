@@ -3,7 +3,7 @@
  * Visual interface for the Pattern Library system
  */
 
-import { PatternLibrary, PatternData } from '../game/PatternLibrary';
+import { PatternLibrary, Pattern, PatternCategory } from '../game/PatternLibrary';
 
 export class PatternLibraryUI {
   private container: HTMLElement | null = null;
@@ -85,11 +85,11 @@ export class PatternLibraryUI {
     const categoriesContainer = document.getElementById('pattern-categories');
     if (!categoriesContainer) return;
 
-    const categories = this.library.getCategories();
+    const categories = Object.values(PatternCategory);
     categoriesContainer.innerHTML = `
       <div class="category-item active" data-category="all">All Patterns</div>
       ${categories.map(cat => `
-        <div class="category-item" data-category="${cat}">${cat}</div>
+        <div class="category-item" data-category="${cat}">${this.formatCategoryName(cat)}</div>
       `).join('')}
     `;
 
@@ -100,20 +100,24 @@ export class PatternLibraryUI {
         categoryItems.forEach(i => i.classList.remove('active'));
         item.classList.add('active');
         const category = item.getAttribute('data-category');
-        this.refreshPatternList(category === 'all' ? undefined : category || undefined);
+        this.refreshPatternList(category === 'all' ? undefined : category as PatternCategory || undefined);
       });
     });
 
     this.refreshPatternList();
   }
 
-  private refreshPatternList(category?: string): void {
+  private formatCategoryName(category: PatternCategory): string {
+    return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  private refreshPatternList(category?: PatternCategory): void {
     const listContainer = document.getElementById('pattern-list');
     if (!listContainer) return;
 
     const patterns = category
       ? this.library.getPatternsByCategory(category)
-      : this.library.listAllPatterns();
+      : this.library.getAllPatternNames();
 
     if (patterns.length === 0) {
       listContainer.innerHTML = '<div class="no-patterns">No patterns found</div>';
@@ -121,14 +125,15 @@ export class PatternLibraryUI {
     }
 
     listContainer.innerHTML = patterns.map(name => {
-      const pattern = this.library.getPattern(name);
+      const pattern = this.library.loadPattern(name);
+      const voxelCount = pattern ? pattern.width * pattern.height * pattern.depth : 0;
       return `
         <div class="pattern-item" data-pattern="${name}">
-          <div class="pattern-icon">${this.getCategoryIcon(pattern?.category)}</div>
+          <div class="pattern-icon">${this.getCategoryIcon()}</div>
           <div class="pattern-info">
             <div class="pattern-name">${name}</div>
             <div class="pattern-meta">
-              ${pattern?.data.length || 0} voxels | ${pattern?.category || 'Uncategorized'}
+              ${voxelCount} voxels | ${pattern?.description || 'No description'}
             </div>
           </div>
         </div>
@@ -154,23 +159,21 @@ export class PatternLibraryUI {
     const detailsContainer = document.getElementById('pattern-details');
     if (!detailsContainer) return;
 
-    const pattern = this.library.getPattern(name);
+    const pattern = this.library.loadPattern(name);
     if (!pattern) {
       detailsContainer.innerHTML = '<div class="no-selection">Pattern not found</div>';
       return;
     }
 
-    const bounds = this.calculateBounds(pattern.data);
-
     detailsContainer.innerHTML = `
       <div class="pattern-detail-header">
-        <div class="pattern-detail-icon">${this.getCategoryIcon(pattern.category)}</div>
+        <div class="pattern-detail-icon">${this.getCategoryIcon()}</div>
         <div class="pattern-detail-title">${name}</div>
       </div>
       <div class="pattern-detail-info">
         <div class="detail-row">
-          <span class="detail-label">Category:</span>
-          <span class="detail-value">${pattern.category || 'Uncategorized'}</span>
+          <span class="detail-label">Description:</span>
+          <span class="detail-value">${pattern.description || 'No description'}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Voxels:</span>
@@ -178,11 +181,11 @@ export class PatternLibraryUI {
         </div>
         <div class="detail-row">
           <span class="detail-label">Size:</span>
-          <span class="detail-value">${bounds.x}×${bounds.y}×${bounds.z}</span>
+          <span class="detail-value">${pattern.width}×${pattern.height}×${pattern.depth}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Created:</span>
-          <span class="detail-value">${new Date(pattern.timestamp).toLocaleDateString()}</span>
+          <span class="detail-value">${new Date(pattern.created).toLocaleDateString()}</span>
         </div>
       </div>
       <div class="pattern-detail-actions">
@@ -209,40 +212,8 @@ export class PatternLibraryUI {
     }
   }
 
-  private calculateBounds(data: Array<{x: number, y: number, z: number, state: number}>): {x: number, y: number, z: number} {
-    if (data.length === 0) return {x: 0, y: 0, z: 0};
-
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    let minZ = Infinity, maxZ = -Infinity;
-
-    data.forEach(v => {
-      minX = Math.min(minX, v.x);
-      maxX = Math.max(maxX, v.x);
-      minY = Math.min(minY, v.y);
-      maxY = Math.max(maxY, v.y);
-      minZ = Math.min(minZ, v.z);
-      maxZ = Math.max(maxZ, v.z);
-    });
-
-    return {
-      x: maxX - minX + 1,
-      y: maxY - minY + 1,
-      z: maxZ - minZ + 1
-    };
-  }
-
-  private getCategoryIcon(category?: string): string {
-    const icons: Record<string, string> = {
-      'Still Life': '🔷',
-      'Oscillators': '🔄',
-      'Spaceships': '🚀',
-      'Guns': '🔫',
-      'Custom': '⭐',
-      'Energy': '⚡',
-      'Structures': '🏗️'
-    };
-    return icons[category || ''] || '📦';
+  private getCategoryIcon(): string {
+    return '📦';
   }
 
   private saveCurrentPattern(): void {
@@ -280,9 +251,14 @@ export class PatternLibraryUI {
     const newName = prompt(`Duplicate "${name}" as:`, name + ' (copy)');
     if (!newName) return;
 
-    const pattern = this.library.getPattern(name);
+    const pattern = this.library.loadPattern(name);
     if (pattern) {
-      this.library.savePattern(newName, pattern.data, pattern.category);
+      const duplicated: Pattern = {
+        ...pattern,
+        name: newName,
+        created: Date.now()
+      };
+      this.library.savePattern(duplicated, PatternCategory.Custom);
       this.refreshCategories();
     }
   }
@@ -291,9 +267,13 @@ export class PatternLibraryUI {
     const newName = prompt(`Rename "${name}" to:`, name);
     if (!newName || newName === name) return;
 
-    const pattern = this.library.getPattern(name);
+    const pattern = this.library.loadPattern(name);
     if (pattern) {
-      this.library.savePattern(newName, pattern.data, pattern.category);
+      const renamed: Pattern = {
+        ...pattern,
+        name: newName
+      };
+      this.library.savePattern(renamed, PatternCategory.Custom);
       this.library.deletePattern(name);
       this.selectedPattern = newName;
       this.refreshCategories();
@@ -302,7 +282,7 @@ export class PatternLibraryUI {
   }
 
   private exportLibrary(): void {
-    const json = this.library.exportToJSON();
+    const json = this.library.exportAll();
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -323,7 +303,7 @@ export class PatternLibraryUI {
         reader.onload = (e) => {
           const json = e.target?.result as string;
           if (json) {
-            this.library.importFromJSON(json);
+            this.library.importAll(json);
             this.refreshCategories();
           }
         };

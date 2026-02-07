@@ -341,7 +341,7 @@ export class MusicSystem {
   private getFrequency(scaleIndex: number, octave: number): number {
     const A4 = 440;
     const baseNote = this.getKeyOffset();
-    const scaleOffset = this.config.scale[scaleIndex % this.config.scale.length];
+    const scaleOffset = this.config.scale[scaleIndex % this.config.scale.length] ?? 0;
     const semitones = baseNote + scaleOffset + (octave - 4) * 12;
 
     return A4 * Math.pow(2, semitones / 12);

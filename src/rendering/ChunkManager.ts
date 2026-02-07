@@ -34,7 +34,7 @@ export class ChunkManager {
   private viewDistance: number; // In chunks
   private maxLoadedChunks: number;
   private worldManager: WorldManager;
-  private renderer: VoxelRenderer | OrganicRenderer | null = null;
+  private _renderer: VoxelRenderer | OrganicRenderer | null = null;
   private storage: ChunkStorage;
   private useStorage: boolean = true;
 
@@ -69,7 +69,14 @@ export class ChunkManager {
    * Set renderer for chunk visualization
    */
   public setRenderer(renderer: VoxelRenderer | OrganicRenderer): void {
-    this.renderer = renderer;
+    this._renderer = renderer;
+  }
+
+  /**
+   * Get renderer for external access
+   */
+  public getRenderer(): VoxelRenderer | OrganicRenderer | null {
+    return this._renderer;
   }
 
   /**
@@ -117,8 +124,9 @@ export class ChunkManager {
     // Try to load from storage first
     if (this.useStorage) {
       try {
-        chunk = await this.storage.loadChunk(chunkCoord, this.chunkSize);
-        if (chunk) {
+        const loadedChunk = await this.storage.loadChunk(chunkCoord, this.chunkSize);
+        if (loadedChunk) {
+          chunk = loadedChunk;
           this.chunks.set(key, chunk);
           console.log(`Loaded chunk ${key} from storage`);
 
@@ -323,7 +331,7 @@ export class ChunkManager {
     // Unload distant chunks
     const chunksToUnload: ChunkCoord[] = [];
 
-    for (const [key, chunk] of this.chunks) {
+    for (const [_key, chunk] of this.chunks) {
       const dx = chunk.coord.x - centerChunk.x;
       const dy = chunk.coord.y - centerChunk.y;
       const dz = chunk.coord.z - centerChunk.z;
@@ -445,9 +453,9 @@ export class ChunkManager {
     const chunkCoord = this.worldToChunk(worldPos);
     let chunk = this.getChunk(chunkCoord);
 
-    // Load chunk if not loaded
+    // Load chunk if not loaded (synchronous version)
     if (!chunk) {
-      chunk = this.loadChunk(chunkCoord);
+      chunk = this.loadChunkSync(chunkCoord);
     }
 
     // Convert world pos to local chunk coordinates
@@ -465,7 +473,7 @@ export class ChunkManager {
       return;
     }
 
-    chunk.grid.set(localX, localY, localZ, state);
-    chunk.dirty = true;
+    chunk!.grid.set(localX, localY, localZ, state);
+    chunk!.dirty = true;
   }
 }

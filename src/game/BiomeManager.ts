@@ -1,21 +1,44 @@
 import { CARule } from '../core/CARule';
+import { VoxelState } from '../core/VoxelState';
 import { BiomeType, BiomeConfig, WorldManager } from './WorldManager';
 import { Vector3 } from 'three';
 
 /**
  * Biome-specific CA rule
  */
-export class BiomeRule extends CARule {
+export class BiomeRule implements CARule {
   private biomeConfig: BiomeConfig;
 
   constructor(biomeConfig: BiomeConfig) {
-    super();
     this.biomeConfig = biomeConfig;
   }
 
   /**
    * Apply biome-specific rules
    */
+  public getNextState(
+    currentState: VoxelState,
+    aliveNeighbors: number,
+    _corruptedNeighbors: number
+  ): VoxelState {
+    const rules = this.biomeConfig.caRules;
+
+    // Dead cells can be born
+    if (currentState === VoxelState.Dead) {
+      if (aliveNeighbors >= rules.birthMin && aliveNeighbors <= rules.birthMax) {
+        return VoxelState.Alive;
+      }
+      return VoxelState.Dead;
+    }
+
+    // Living cells can survive
+    if (aliveNeighbors >= rules.surviveMin && aliveNeighbors <= rules.surviveMax) {
+      return currentState;
+    }
+
+    return VoxelState.Dead;
+  }
+
   public shouldBeBorn(aliveNeighbors: number): boolean {
     return aliveNeighbors >= this.biomeConfig.caRules.birthMin &&
            aliveNeighbors <= this.biomeConfig.caRules.birthMax;

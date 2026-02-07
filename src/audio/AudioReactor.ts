@@ -260,7 +260,7 @@ export class AudioReactor {
       'Quantum Foam': 98.0,        // G2
       'default': 55.0
     };
-    return biomeFrequencies[biomeType] || biomeFrequencies['default'];
+    return biomeFrequencies[biomeType] ?? biomeFrequencies['default']!;
   }
 
   /**

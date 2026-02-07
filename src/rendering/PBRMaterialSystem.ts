@@ -275,8 +275,8 @@ export class PBRMaterialSystem {
    * Generate normal map from height map
    */
   public generateNormalMap(
-    heightMap: THREE.Texture,
-    strength: number = 1.0
+    _heightMap: THREE.Texture,
+    _strength: number = 1.0
   ): THREE.Texture {
     // This is a simplified version - in production you'd want a more sophisticated algorithm
     const canvas = document.createElement('canvas');

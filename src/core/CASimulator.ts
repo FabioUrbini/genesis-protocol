@@ -3,16 +3,16 @@ import { VoxelState } from './VoxelState';
 import { CARule, DefaultCARule, count3DMooreNeighbors } from './CARule';
 
 /**
- * Region for dirty tracking
+ * Region for dirty tracking - currently using string keys instead
  */
-interface DirtyRegion {
-  minX: number;
-  minY: number;
-  minZ: number;
-  maxX: number;
-  maxY: number;
-  maxZ: number;
-}
+// interface DirtyRegion {
+//   minX: number;
+//   minY: number;
+//   minZ: number;
+//   maxX: number;
+//   maxY: number;
+//   maxZ: number;
+// }
 
 /**
  * Cellular Automaton Simulator
@@ -81,7 +81,10 @@ export class CASimulator {
 
       // Expand dirty regions to include neighbors
       for (const regionKey of this.dirtyRegions) {
-        const [rx, ry, rz] = regionKey.split(',').map(Number);
+        const parts = regionKey.split(',').map(Number);
+        const rx = parts[0]!;
+        const ry = parts[1]!;
+        const rz = parts[2]!;
 
         // Add region and its neighbors
         for (let dz = -1; dz <= 1; dz++) {
@@ -104,7 +107,10 @@ export class CASimulator {
 
       // Update only necessary regions
       for (const regionKey of regionsToUpdate) {
-        const [rx, ry, rz] = regionKey.split(',').map(Number);
+        const parts = regionKey.split(',').map(Number);
+        const rx = parts[0]!;
+        const ry = parts[1]!;
+        const rz = parts[2]!;
         const changed = this.updateRegion(rx, ry, rz);
         if (changed) {
           newDirtyRegions.add(regionKey);

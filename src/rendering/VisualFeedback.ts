@@ -190,7 +190,7 @@ export class VisualFeedback {
   /**
    * Set vignette intensity
    */
-  setVignette(intensity: number, duration: number): void {
+  setVignette(intensity: number, _duration: number): void {
     this.targetVignetteIntensity = Math.max(0, Math.min(1, intensity));
   }
 

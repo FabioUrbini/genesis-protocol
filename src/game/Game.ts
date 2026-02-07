@@ -32,7 +32,7 @@ export class Game {
   private cubeRenderer: VoxelRenderer;
   private organicRenderer: OrganicRenderer;
   private postProcessing: PostProcessingManager | null = null;
-  private player: Player;
+  public player: Player;
   private isRunning: boolean;
   private lastCAUpdateTime: number;
   private lastFrameTime: number;
@@ -43,7 +43,7 @@ export class Game {
   private renderStyle: RenderStyle = RenderStyle.Organic;
   private usePostProcessing: boolean = true;
   private isCAStepInProgress: boolean = false;
-  private timeManipulation: TimeManipulation;
+  public timeManipulation: TimeManipulation;
 
   // Phase 10: Game Modes & Progression Systems
   public gameMode: GameMode | null = null;
@@ -587,7 +587,7 @@ export class Game {
   /**
    * Track player achievements during gameplay
    */
-  private trackPlayerAchievements(deltaTime: number): void {
+  private trackPlayerAchievements(_deltaTime: number): void {
     // Track survival time
     const playTimeSeconds = this.getTotalPlayTime() / 1000;
     this.achievementSystem.trackSurvivalTime(playTimeSeconds);

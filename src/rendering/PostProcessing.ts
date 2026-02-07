@@ -212,42 +212,42 @@ export class PostProcessingManager {
 
     // SSAO pass
     this.ssaoPass = new ShaderPass(SSAOShader);
-    this.ssaoPass.uniforms['intensity'].value = this.config.ssaoIntensity;
-    this.ssaoPass.uniforms['radius'].value = this.config.ssaoRadius;
-    this.ssaoPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
+    if (this.ssaoPass.uniforms['intensity']) this.ssaoPass.uniforms['intensity'].value = this.config.ssaoIntensity;
+    if (this.ssaoPass.uniforms['radius']) this.ssaoPass.uniforms['radius'].value = this.config.ssaoRadius;
+    if (this.ssaoPass.uniforms['resolution']) this.ssaoPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
     this.ssaoPass.enabled = this.config.ssaoEnabled;
     this.composer.addPass(this.ssaoPass);
 
     // Depth of Field pass
     this.depthOfFieldPass = new ShaderPass(DepthOfFieldShader);
-    this.depthOfFieldPass.uniforms['focus'].value = this.config.dofFocus;
-    this.depthOfFieldPass.uniforms['aperture'].value = this.config.dofAperture;
-    this.depthOfFieldPass.uniforms['maxBlur'].value = this.config.dofMaxBlur;
-    this.depthOfFieldPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
+    if (this.depthOfFieldPass.uniforms['focus']) this.depthOfFieldPass.uniforms['focus'].value = this.config.dofFocus;
+    if (this.depthOfFieldPass.uniforms['aperture']) this.depthOfFieldPass.uniforms['aperture'].value = this.config.dofAperture;
+    if (this.depthOfFieldPass.uniforms['maxBlur']) this.depthOfFieldPass.uniforms['maxBlur'].value = this.config.dofMaxBlur;
+    if (this.depthOfFieldPass.uniforms['resolution']) this.depthOfFieldPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
     this.depthOfFieldPass.enabled = this.config.depthOfFieldEnabled;
     this.composer.addPass(this.depthOfFieldPass);
 
     // Motion Blur pass
     this.motionBlurPass = new ShaderPass(MotionBlurShader);
-    this.motionBlurPass.uniforms['velocityFactor'].value = this.config.motionBlurIntensity;
+    if (this.motionBlurPass.uniforms['velocityFactor']) this.motionBlurPass.uniforms['velocityFactor'].value = this.config.motionBlurIntensity;
     this.motionBlurPass.enabled = this.config.motionBlurEnabled;
     this.composer.addPass(this.motionBlurPass);
 
     // God Rays pass
     this.godRaysPass = new ShaderPass(GodRaysShader);
-    this.godRaysPass.uniforms['exposure'].value = this.config.godRaysExposure;
+    if (this.godRaysPass.uniforms['exposure']) this.godRaysPass.uniforms['exposure'].value = this.config.godRaysExposure;
     this.godRaysPass.enabled = this.config.godRaysEnabled;
     this.composer.addPass(this.godRaysPass);
 
     // Color Grading pass
     this.colorGradingPass = new ShaderPass(ColorGradingShader);
-    this.colorGradingPass.uniforms['intensity'].value = this.config.colorGradingIntensity;
+    if (this.colorGradingPass.uniforms['intensity']) this.colorGradingPass.uniforms['intensity'].value = this.config.colorGradingIntensity;
     this.colorGradingPass.enabled = this.config.colorGradingEnabled;
     this.composer.addPass(this.colorGradingPass);
 
     // Film Grain pass (should be last for best effect)
     this.filmGrainPass = new ShaderPass(FilmGrainShader);
-    this.filmGrainPass.uniforms['intensity'].value = this.config.filmGrainIntensity;
+    if (this.filmGrainPass.uniforms['intensity']) this.filmGrainPass.uniforms['intensity'].value = this.config.filmGrainIntensity;
     this.filmGrainPass.enabled = this.config.filmGrainEnabled;
     this.composer.addPass(this.filmGrainPass);
 
@@ -262,7 +262,9 @@ export class PostProcessingManager {
     // Update time for animated effects
     if (delta !== undefined) {
       this.time += delta;
-      this.filmGrainPass.uniforms['time'].value = this.time;
+      if (this.filmGrainPass.uniforms['time']) {
+        this.filmGrainPass.uniforms['time'].value = this.time;
+      }
     }
     this.composer.render();
   }
@@ -358,7 +360,9 @@ export class PostProcessingManager {
    */
   public setSSAOIntensity(intensity: number): void {
     this.config.ssaoIntensity = intensity;
-    this.ssaoPass.uniforms['intensity'].value = intensity;
+    if (this.ssaoPass.uniforms['intensity']) {
+      this.ssaoPass.uniforms['intensity'].value = intensity;
+    }
   }
 
   /**
@@ -366,7 +370,9 @@ export class PostProcessingManager {
    */
   public setSSAORadius(radius: number): void {
     this.config.ssaoRadius = radius;
-    this.ssaoPass.uniforms['radius'].value = radius;
+    if (this.ssaoPass.uniforms['radius']) {
+      this.ssaoPass.uniforms['radius'].value = radius;
+    }
   }
 
   /**
@@ -382,7 +388,9 @@ export class PostProcessingManager {
    */
   public setDOFFocus(focus: number): void {
     this.config.dofFocus = focus;
-    this.depthOfFieldPass.uniforms['focus'].value = focus;
+    if (this.depthOfFieldPass.uniforms['focus']) {
+      this.depthOfFieldPass.uniforms['focus'].value = focus;
+    }
   }
 
   /**
@@ -390,7 +398,9 @@ export class PostProcessingManager {
    */
   public setDOFAperture(aperture: number): void {
     this.config.dofAperture = aperture;
-    this.depthOfFieldPass.uniforms['aperture'].value = aperture;
+    if (this.depthOfFieldPass.uniforms['aperture']) {
+      this.depthOfFieldPass.uniforms['aperture'].value = aperture;
+    }
   }
 
   /**
@@ -406,7 +416,9 @@ export class PostProcessingManager {
    */
   public setMotionBlurIntensity(intensity: number): void {
     this.config.motionBlurIntensity = intensity;
-    this.motionBlurPass.uniforms['velocityFactor'].value = intensity;
+    if (this.motionBlurPass.uniforms['velocityFactor']) {
+      this.motionBlurPass.uniforms['velocityFactor'].value = intensity;
+    }
   }
 
   /**
@@ -422,7 +434,9 @@ export class PostProcessingManager {
    */
   public setFilmGrainIntensity(intensity: number): void {
     this.config.filmGrainIntensity = intensity;
-    this.filmGrainPass.uniforms['intensity'].value = intensity;
+    if (this.filmGrainPass.uniforms['intensity']) {
+      this.filmGrainPass.uniforms['intensity'].value = intensity;
+    }
   }
 
   /**
@@ -438,7 +452,9 @@ export class PostProcessingManager {
    */
   public setGodRaysExposure(exposure: number): void {
     this.config.godRaysExposure = exposure;
-    this.godRaysPass.uniforms['exposure'].value = exposure;
+    if (this.godRaysPass.uniforms['exposure']) {
+      this.godRaysPass.uniforms['exposure'].value = exposure;
+    }
   }
 
   /**
@@ -454,7 +470,9 @@ export class PostProcessingManager {
    */
   public setColorGradingIntensity(intensity: number): void {
     this.config.colorGradingIntensity = intensity;
-    this.colorGradingPass.uniforms['intensity'].value = intensity;
+    if (this.colorGradingPass.uniforms['intensity']) {
+      this.colorGradingPass.uniforms['intensity'].value = intensity;
+    }
   }
 
   /**
@@ -513,8 +531,12 @@ export class PostProcessingManager {
       );
     }
 
-    this.ssaoPass.uniforms['resolution'].value.set(width, height);
-    this.depthOfFieldPass.uniforms['resolution'].value.set(width, height);
+    if (this.ssaoPass.uniforms['resolution']) {
+      this.ssaoPass.uniforms['resolution'].value.set(width, height);
+    }
+    if (this.depthOfFieldPass.uniforms['resolution']) {
+      this.depthOfFieldPass.uniforms['resolution'].value.set(width, height);
+    }
   }
 
   /**

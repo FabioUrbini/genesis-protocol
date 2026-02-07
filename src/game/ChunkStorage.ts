@@ -212,8 +212,8 @@ export class ChunkStorage {
 
       request.onsuccess = () => {
         const coords = request.result.map((key) => {
-          const [x, y, z] = (key as string).split(',').map(Number);
-          return { x, y, z };
+          const parts = (key as string).split(',').map(Number);
+          return { x: parts[0]!, y: parts[1]!, z: parts[2]! };
         });
         resolve(coords);
       };

@@ -1,8 +1,9 @@
-import { Vector3, Mesh, BoxGeometry, MeshStandardMaterial, Scene, PerspectiveCamera, Euler, Raycaster } from 'three';
+import { Vector3, Vector2, Mesh, BoxGeometry, MeshStandardMaterial, Scene, PerspectiveCamera, Euler, Raycaster } from 'three';
 import { PlayerPhysics, PlayerPhysicsConfig } from '../physics/PlayerPhysics';
 import { VoxelGrid } from '../core/VoxelGrid';
 import { VoxelState } from '../core/VoxelState';
 import { InventorySystem } from './InventorySystem';
+import { EnvironmentalSuit } from './EnvironmentalSuit';
 import { ResourceHarvesting } from './ResourceHarvesting';
 
 /**
@@ -49,15 +50,15 @@ export const DEFAULT_PLAYER_CONFIG: PlayerConfig = {
  */
 export class Player {
   private physics: PlayerPhysics;
-  private camera: PerspectiveCamera;
+  public camera: PerspectiveCamera;
   private mesh: Mesh | null = null;
   private scene: Scene;
   private config: PlayerConfig;
-  
+
   // Camera rotation
   private yaw: number = 0;
   private pitch: number = 0;
-  
+
   // Input state
   private input: PlayerInput = {
     forward: false,
@@ -73,8 +74,8 @@ export class Player {
   };
 
   // Fly mode state
-  private flyMode: boolean = false;
-  private godMode: boolean = false;
+  public flyMode: boolean = false;
+  public godMode: boolean = false;
   private flyPosition: Vector3 = new Vector3();
 
   // Pointer lock state
@@ -86,7 +87,8 @@ export class Player {
   private selectedVoxelState: VoxelState = VoxelState.Alive;
 
   // Inventory and resource system
-  private inventory: InventorySystem;
+  public inventory: InventorySystem;
+  public environmentalSuit: EnvironmentalSuit | null = null;
   private harvesting: ResourceHarvesting;
 
   constructor(
@@ -105,6 +107,7 @@ export class Player {
 
     // Initialize inventory and harvesting
     this.inventory = new InventorySystem();
+    this.environmentalSuit = new EnvironmentalSuit(this.inventory);
     this.harvesting = new ResourceHarvesting(this.inventory);
 
     // Create player mesh (for third-person view or debugging)
@@ -305,7 +308,7 @@ export class Player {
    */
   private raycastVoxel(): { hit: boolean; x: number; y: number; z: number; normal: Vector3 } | null {
     // Setup raycaster from camera
-    this.raycaster.setFromCamera({ x: 0, y: 0 }, this.camera);
+    this.raycaster.setFromCamera(new Vector2(0, 0), this.camera);
     this.raycaster.far = this.maxReachDistance;
 
     const voxelGrid = this.physics.getVoxelGrid();
@@ -630,8 +633,12 @@ export class Player {
   /**
    * Set player position
    */
-  public setPosition(position: Vector3): void {
-    this.physics.setPosition(position);
+  public setPosition(x: number | Vector3, y?: number, z?: number): void {
+    if (x instanceof Vector3) {
+      this.physics.setPosition(x);
+    } else if (y !== undefined && z !== undefined) {
+      this.physics.setPosition(new Vector3(x, y, z));
+    }
     this.updateCameraPosition();
   }
 
