@@ -577,6 +577,18 @@ export class Game {
       caStatusElement.textContent = this.caRenderingEnabled ? 'ANIMATING' : 'PAUSED';
       caStatusElement.style.color = this.caRenderingEnabled ? '#50e3c2' : '#ff6b35';
     }
+
+    // Update always-visible simulation status
+    const caStatusAlways = document.getElementById('ca-status-always');
+    if (caStatusAlways) {
+      caStatusAlways.textContent = this.caRenderingEnabled ? 'ANIMATING' : 'PAUSED';
+      caStatusAlways.style.color = this.caRenderingEnabled ? '#50e3c2' : '#ff6b35';
+    }
+
+    const tickAlways = document.getElementById('tick-always');
+    if (tickAlways) {
+      tickAlways.textContent = this.simulator.getTick().toString();
+    }
   }
 
   /**
