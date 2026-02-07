@@ -41,8 +41,8 @@ export const DEFAULT_PLAYER_CONFIG: PlayerConfig = {
   mouseSensitivity: 0.002,
   maxPitch: Math.PI / 2 - 0.1,
   showPlayerMesh: false, // Hide in first-person
-  flySpeed: 15.0,
-  flySprintMultiplier: 3.0,
+  flySpeed: 25.0,  // Faster, smoother flying
+  flySprintMultiplier: 2.5,  // Smooth sprint boost
 };
 
 /**
@@ -73,8 +73,8 @@ export class Player {
     mouseMovementY: 0,
   };
 
-  // Fly mode state
-  public flyMode: boolean = false;
+  // Fly mode state (enabled by default for smooth flying experience)
+  public flyMode: boolean = true;
   public godMode: boolean = false;
   private flyPosition: Vector3 = new Vector3();
 

@@ -347,10 +347,10 @@ export class OrganicRenderer {
   constructor(canvas: HTMLCanvasElement, voxelSize = 1) {
     this.voxelSize = voxelSize;
 
-    // Create scene
+    // Create scene with deep space background
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x050510);
-    this.scene.fog = new THREE.FogExp2(0x050510, 0.015);
+    this.scene.background = new THREE.Color(0x0a0a15);  // Deep blue-black space
+    this.scene.fog = new THREE.FogExp2(0x0a0a15, 0.012);  // Subtle atmospheric fog
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(

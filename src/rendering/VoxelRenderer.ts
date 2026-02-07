@@ -54,10 +54,10 @@ export class VoxelRenderer {
   constructor(canvas: HTMLCanvasElement, voxelSize = 1) {
     this.voxelSize = voxelSize;
     
-    // Create scene
+    // Create scene with deep space background
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0a0a);
-    this.scene.fog = new THREE.Fog(0x0a0a0a, 50, 200);
+    this.scene.background = new THREE.Color(0x0a0a15);  // Deep blue-black space
+    this.scene.fog = new THREE.Fog(0x0a0a15, 50, 200);  // Distance fog
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(

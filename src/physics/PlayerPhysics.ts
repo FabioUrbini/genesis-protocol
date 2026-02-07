@@ -26,10 +26,10 @@ export interface PlayerPhysicsConfig {
 export const DEFAULT_PHYSICS_CONFIG: PlayerPhysicsConfig = {
   gravity: -20.0,
   jumpForce: 8.0,
-  moveSpeed: 5.0,
-  sprintMultiplier: 1.5,
-  friction: 0.9,
-  airResistance: 0.98,
+  moveSpeed: 10.0,  // Faster, smoother movement
+  sprintMultiplier: 2.0,  // More pronounced sprint
+  friction: 0.95,  // Less friction for smoother gliding
+  airResistance: 0.99,  // Less air resistance for floaty feel
   playerHeight: 1.8,
   playerRadius: 0.3,
   energyDepletionRate: 1.0, // per second
