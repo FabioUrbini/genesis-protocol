@@ -43,6 +43,7 @@ export class Game {
   private renderStyle: RenderStyle = RenderStyle.Organic;
   private usePostProcessing: boolean = true;
   private isCAStepInProgress: boolean = false;
+  private caSimulationEnabled: boolean = false; // CA simulation starts disabled
   public timeManipulation: TimeManipulation;
 
   // Phase 10: Game Modes & Progression Systems
@@ -103,12 +104,12 @@ export class Game {
       );
     }
 
-    // Initialize player at spawn position (above the center of the world)
+    // Initialize player at spawn position (high above the world for overview)
     // Note: World is centered at origin (0,0,0) for rendering, but grid data
-    // is at grid coordinates (0 to gridSize-1). Spawn at world center.
+    // is at grid coordinates (0 to gridSize-1). Spawn high above for overview.
     const spawnPosition = new Vector3(
       0,
-      5,
+      40,  // High above the world
       0
     );
     this.player = new Player(
@@ -157,8 +158,21 @@ export class Game {
           // Toggle vignette
           this.toggleVignette();
           break;
+        case 't':
+          // Toggle CA simulation
+          this.toggleCASimulation();
+          break;
       }
     });
+  }
+
+  /**
+   * Toggle CA simulation on/off
+   */
+  public toggleCASimulation(): void {
+    this.caSimulationEnabled = !this.caSimulationEnabled;
+    console.log(`CA Simulation: ${this.caSimulationEnabled ? 'ENABLED' : 'DISABLED'}`);
+    this.updateUI();
   }
 
   /**
@@ -430,8 +444,9 @@ export class Game {
       this.updateUI();
     }
 
-    // Update CA simulation at fixed interval (unless paused)
-    if (currentTime - this.lastCAUpdateTime >= this.caUpdateInterval &&
+    // Update CA simulation at fixed interval (only if enabled and not paused)
+    if (this.caSimulationEnabled &&
+        currentTime - this.lastCAUpdateTime >= this.caUpdateInterval &&
         !this.isCAStepInProgress &&
         !this.timeManipulation.isPaused()) {
 
@@ -535,6 +550,13 @@ export class Game {
     if (oxygenElement) {
       const state = this.player.getState();
       oxygenElement.textContent = state.oxygen.toFixed(0);
+    }
+
+    // Update CA simulation status
+    const caStatusElement = document.getElementById('ca-status');
+    if (caStatusElement) {
+      caStatusElement.textContent = this.caSimulationEnabled ? 'RUNNING' : 'PAUSED';
+      caStatusElement.style.color = this.caSimulationEnabled ? '#50e3c2' : '#ff6b35';
     }
   }
 
