@@ -703,6 +703,13 @@ export class Player {
   }
 
   /**
+   * Update voxel grid reference (e.g., after grid expansion)
+   */
+  public updateGrid(grid: VoxelGrid): void {
+    this.physics.updateGrid(grid);
+  }
+
+  /**
    * Cleanup resources
    */
   public dispose(): void {

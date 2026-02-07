@@ -50,6 +50,7 @@ export class Game {
   private caStatusUpdatesEnabled: boolean = false; // Status changes visible (press T to toggle) - OFF by default
   private caAnimationsEnabled: boolean = false; // Smooth animations (press N to toggle, expensive)
   private gridNeedsRender: boolean = true; // Flag if grid changed and needs re-render
+  private lastGridSize: number = 0; // Track grid size for expansion detection
 
   private uiUpdateScheduled: boolean = false; // Throttle UI updates
   public timeManipulation: TimeManipulation;
@@ -146,6 +147,7 @@ export class Game {
     this.lastSnapshotRenderTime = 0;
     this.lastFrameTime = 0;
     this.caUpdateInterval = caUpdateInterval;
+    this.lastGridSize = gridSize;
     this.fps = 0;
     this.frameCount = 0;
     this.fpsUpdateTime = 0;
@@ -548,6 +550,9 @@ export class Game {
           // Update main thread grid with worker result
           this.simulator.getGrid().getData().set(gridData);
 
+          // Check for map expansion
+          this.checkGridExpansion();
+
           // Mark that grid has changed
           this.gridNeedsRender = true;
 
@@ -560,6 +565,9 @@ export class Game {
       } else {
         // Fallback to main thread simulation
         this.simulator.step();
+
+        // Check for map expansion
+        this.checkGridExpansion();
 
         // Mark that grid has changed
         this.gridNeedsRender = true;
@@ -703,6 +711,31 @@ export class Game {
     if (this.uiElements.tickAlways) {
       this.uiElements.tickAlways.textContent = tick;
     }
+  }
+
+  /**
+   * Check if the grid has expanded and re-sync all dependent systems
+   */
+  private checkGridExpansion(): void {
+    const expanded = this.simulator.checkAndExpand();
+    if (!expanded) return;
+
+    const { width } = this.simulator.getGridSize();
+    if (width === this.lastGridSize) return;
+    this.lastGridSize = width;
+
+    // Update player's voxel grid reference
+    this.player.updateGrid(this.simulator.getGrid());
+
+    // Re-initialize worker simulator with new grid size
+    if (this.useWorkers && this.workerSimulator) {
+      this.workerSimulator.terminate();
+      this.workerSimulator = null;
+      this.initializeWorkerSimulator(width);
+    }
+
+    // Force a full re-render on next frame
+    this.gridNeedsRender = true;
   }
 
   /**

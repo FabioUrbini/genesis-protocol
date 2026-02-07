@@ -100,6 +100,43 @@ export class VoxelGrid {
   }
 
   /**
+   * Resize grid, preserving existing data centered in the new grid.
+   * Returns a new VoxelGrid with the new dimensions.
+   */
+  public resize(newWidth: number, newHeight: number, newDepth: number): VoxelGrid {
+    const resized = new VoxelGrid(newWidth, newHeight, newDepth);
+    // Calculate offset to center old data in new grid
+    const offsetX = Math.floor((newWidth - this.width) / 2);
+    const offsetY = Math.floor((newHeight - this.height) / 2);
+    const offsetZ = Math.floor((newDepth - this.depth) / 2);
+
+    const oldData = this.data;
+    const newData = resized.getData();
+    const oldW = this.width;
+    const oldWH = oldW * this.height;
+    const newW = newWidth;
+    const newWH = newWidth * newHeight;
+
+    for (let z = 0; z < this.depth; z++) {
+      const nz = z + offsetZ;
+      if (nz < 0 || nz >= newDepth) continue;
+      for (let y = 0; y < this.height; y++) {
+        const ny = y + offsetY;
+        if (ny < 0 || ny >= newHeight) continue;
+        const oldRowStart = z * oldWH + y * oldW;
+        const newRowStart = nz * newWH + ny * newW;
+        const srcStart = Math.max(0, -offsetX);
+        const srcEnd = Math.min(this.width, newWidth - offsetX);
+        if (srcStart >= srcEnd) continue;
+        const dstStart = srcStart + offsetX;
+        newData.set(oldData.subarray(oldRowStart + srcStart, oldRowStart + srcEnd), newRowStart + dstStart);
+      }
+    }
+
+    return resized;
+  }
+
+  /**
    * Clone this grid
    */
   public clone(): VoxelGrid {

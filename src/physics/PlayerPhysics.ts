@@ -426,6 +426,18 @@ export class PlayerPhysics {
   }
 
   /**
+   * Update voxel grid reference (e.g., after grid expansion)
+   */
+  public updateGrid(grid: VoxelGrid): void {
+    this.voxelGrid = grid;
+    this.gridOffset.set(
+      grid.width / 2,
+      grid.height / 2,
+      grid.depth / 2
+    );
+  }
+
+  /**
    * Get voxel grid for raycasting
    */
   public getVoxelGrid(): VoxelGrid {

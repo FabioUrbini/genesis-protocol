@@ -399,6 +399,74 @@ export class CASimulator {
   }
 
   /**
+   * Check if alive voxels are near grid edges and expansion is needed.
+   * Returns true if the grid was expanded.
+   */
+  public checkAndExpand(edgeMargin: number = 2, growAmount: number = 16, maxSize: number = 128): boolean {
+    const width = this.currentGrid.width;
+    const height = this.currentGrid.height;
+    const depth = this.currentGrid.depth;
+
+    if (width >= maxSize && height >= maxSize && depth >= maxSize) {
+      return false;
+    }
+
+    const data = this.currentGrid.getData();
+    const wh = width * height;
+    let needsExpand = false;
+
+    // Check faces of the grid within edgeMargin
+    for (let z = 0; z < depth && !needsExpand; z++) {
+      for (let y = 0; y < height && !needsExpand; y++) {
+        for (let x = 0; x < width && !needsExpand; x++) {
+          // Only check voxels near any face
+          const nearEdge = x < edgeMargin || x >= width - edgeMargin ||
+                           y < edgeMargin || y >= height - edgeMargin ||
+                           z < edgeMargin || z >= depth - edgeMargin;
+          if (!nearEdge) continue;
+
+          if (data[x + y * width + z * wh] !== VoxelState.Dead) {
+            needsExpand = true;
+          }
+        }
+      }
+    }
+
+    if (!needsExpand) return false;
+
+    const newWidth = Math.min(width + growAmount, maxSize);
+    const newHeight = Math.min(height + growAmount, maxSize);
+    const newDepth = Math.min(depth + growAmount, maxSize);
+
+    // Don't expand if we can't actually grow
+    if (newWidth === width && newHeight === height && newDepth === depth) {
+      return false;
+    }
+
+    // Resize both grids (centering old data)
+    this.currentGrid = this.currentGrid.resize(newWidth, newHeight, newDepth);
+    this.nextGrid = new VoxelGrid(newWidth, newHeight, newDepth);
+
+    // Mark all regions dirty after resize
+    this.dirtyRegions.clear();
+    this.markAllRegionsDirty();
+
+    console.log(`Grid expanded: ${width}×${height}×${depth} → ${newWidth}×${newHeight}×${newDepth}`);
+    return true;
+  }
+
+  /**
+   * Get current grid dimensions
+   */
+  public getGridSize(): { width: number; height: number; depth: number } {
+    return {
+      width: this.currentGrid.width,
+      height: this.currentGrid.height,
+      depth: this.currentGrid.depth,
+    };
+  }
+
+  /**
    * Get statistics about current grid state
    */
   public getStats(): {
