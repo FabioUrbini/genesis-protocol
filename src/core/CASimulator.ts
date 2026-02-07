@@ -25,14 +25,68 @@ export class CASimulator {
   private nextGrid: VoxelGrid;
   private tickCount: number;
   private useDirtyTracking: boolean = true;
-  private dirtyRegions: Set<string> = new Set();
+  private dirtyRegions: Set<number> = new Set(); // Changed from Set<string> to Set<number>
   private regionSize: number = 8; // Size of each region for tracking
+
+  // Reusable neighbor count result to avoid object allocation
+  private neighborResult = { aliveNeighbors: 0, corruptedNeighbors: 0 };
 
   constructor(width: number, height: number, depth: number, rule?: CARule) {
     this.rule = rule ?? new DefaultCARule();
     this.currentGrid = new VoxelGrid(width, height, depth);
     this.nextGrid = new VoxelGrid(width, height, depth);
     this.tickCount = 0;
+  }
+
+  /**
+   * Hash region coordinates to single integer for fast Set operations
+   */
+  private getRegionHash(rx: number, ry: number, rz: number): number {
+    return (rx & 0x3FF) | ((ry & 0x3FF) << 10) | ((rz & 0x3FF) << 20);
+  }
+
+  /**
+   * Decode region hash back to coordinates
+   */
+  private decodeRegionHash(hash: number): [number, number, number] {
+    return [
+      hash & 0x3FF,
+      (hash >> 10) & 0x3FF,
+      (hash >> 20) & 0x3FF
+    ];
+  }
+
+  /**
+   * Inline neighbor counting for performance - avoids object allocation
+   */
+  private countNeighborsInline(x: number, y: number, z: number): void {
+    let alive = 0;
+    let corrupted = 0;
+
+    const grid = this.currentGrid;
+
+    for (let dz = -1; dz <= 1; dz++) {
+      const nz = z + dz;
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy;
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0 && dz === 0) continue;
+
+          const nx = x + dx;
+          const state = grid.get(nx, ny, nz);
+
+          if (state !== VoxelState.Dead && state !== VoxelState.Corrupted) {
+            alive++;
+          }
+          if (state === VoxelState.Corrupted) {
+            corrupted++;
+          }
+        }
+      }
+    }
+
+    this.neighborResult.aliveNeighbors = alive;
+    this.neighborResult.corruptedNeighbors = corrupted;
   }
 
   /**
@@ -73,18 +127,15 @@ export class CASimulator {
     const height = this.currentGrid.height;
     const depth = this.currentGrid.depth;
 
-    const newDirtyRegions = new Set<string>();
+    const newDirtyRegions = new Set<number>();
 
     if (this.useDirtyTracking && this.tickCount > 0 && this.dirtyRegions.size > 0) {
       // Only update dirty regions and their neighbors
-      const regionsToUpdate = new Set<string>();
+      const regionsToUpdate = new Set<number>();
 
       // Expand dirty regions to include neighbors
-      for (const regionKey of this.dirtyRegions) {
-        const parts = regionKey.split(',').map(Number);
-        const rx = parts[0]!;
-        const ry = parts[1]!;
-        const rz = parts[2]!;
+      for (const regionHash of this.dirtyRegions) {
+        const [rx, ry, rz] = this.decodeRegionHash(regionHash);
 
         // Add region and its neighbors
         for (let dz = -1; dz <= 1; dz++) {
@@ -98,7 +149,7 @@ export class CASimulator {
                   nrx < Math.ceil(width / this.regionSize) &&
                   nry < Math.ceil(height / this.regionSize) &&
                   nrz < Math.ceil(depth / this.regionSize)) {
-                regionsToUpdate.add(`${nrx},${nry},${nrz}`);
+                regionsToUpdate.add(this.getRegionHash(nrx, nry, nrz));
               }
             }
           }
@@ -106,14 +157,11 @@ export class CASimulator {
       }
 
       // Update only necessary regions
-      for (const regionKey of regionsToUpdate) {
-        const parts = regionKey.split(',').map(Number);
-        const rx = parts[0]!;
-        const ry = parts[1]!;
-        const rz = parts[2]!;
+      for (const regionHash of regionsToUpdate) {
+        const [rx, ry, rz] = this.decodeRegionHash(regionHash);
         const changed = this.updateRegion(rx, ry, rz);
         if (changed) {
-          newDirtyRegions.add(regionKey);
+          newDirtyRegions.add(regionHash);
         }
       }
     } else {
@@ -123,19 +171,14 @@ export class CASimulator {
           for (let x = 0; x < width; x++) {
             const currentState = this.currentGrid.get(x, y, z);
 
-            // Count neighbors using 3D Moore neighborhood
-            const { aliveNeighbors, corruptedNeighbors } = count3DMooreNeighbors(
-              (nx, ny, nz) => this.currentGrid.get(nx, ny, nz),
-              x,
-              y,
-              z
-            );
+            // Inline neighbor counting (avoids object allocation)
+            this.countNeighborsInline(x, y, z);
 
             // Apply CA rule to get next state
             const nextState = this.rule.getNextState(
               currentState,
-              aliveNeighbors,
-              corruptedNeighbors
+              this.neighborResult.aliveNeighbors,
+              this.neighborResult.corruptedNeighbors
             );
 
             this.nextGrid.set(x, y, z, nextState);
@@ -145,7 +188,7 @@ export class CASimulator {
               const rx = Math.floor(x / this.regionSize);
               const ry = Math.floor(y / this.regionSize);
               const rz = Math.floor(z / this.regionSize);
-              newDirtyRegions.add(`${rx},${ry},${rz}`);
+              newDirtyRegions.add(this.getRegionHash(rx, ry, rz));
             }
           }
         }
@@ -182,17 +225,13 @@ export class CASimulator {
         for (let x = startX; x < endX; x++) {
           const currentState = this.currentGrid.get(x, y, z);
 
-          const { aliveNeighbors, corruptedNeighbors } = count3DMooreNeighbors(
-            (nx, ny, nz) => this.currentGrid.get(nx, ny, nz),
-            x,
-            y,
-            z
-          );
+          // Inline neighbor counting (avoids object allocation)
+          this.countNeighborsInline(x, y, z);
 
           const nextState = this.rule.getNextState(
             currentState,
-            aliveNeighbors,
-            corruptedNeighbors
+            this.neighborResult.aliveNeighbors,
+            this.neighborResult.corruptedNeighbors
           );
 
           this.nextGrid.set(x, y, z, nextState);
@@ -233,7 +272,7 @@ export class CASimulator {
     const rx = Math.floor(x / this.regionSize);
     const ry = Math.floor(y / this.regionSize);
     const rz = Math.floor(z / this.regionSize);
-    this.dirtyRegions.add(`${rx},${ry},${rz}`);
+    this.dirtyRegions.add(this.getRegionHash(rx, ry, rz));
   }
 
   /**
@@ -260,7 +299,7 @@ export class CASimulator {
     for (let z = 0; z < Math.ceil(depth / this.regionSize); z++) {
       for (let y = 0; y < Math.ceil(height / this.regionSize); y++) {
         for (let x = 0; x < Math.ceil(width / this.regionSize); x++) {
-          this.dirtyRegions.add(`${x},${y},${z}`);
+          this.dirtyRegions.add(this.getRegionHash(x, y, z));
         }
       }
     }

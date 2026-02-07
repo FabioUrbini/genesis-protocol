@@ -48,6 +48,19 @@ export class Game {
   private uiUpdateScheduled: boolean = false; // Throttle UI updates
   public timeManipulation: TimeManipulation;
 
+  // Cached DOM elements for performance
+  private uiElements = {
+    fps: null as HTMLElement | null,
+    tick: null as HTMLElement | null,
+    position: null as HTMLElement | null,
+    energy: null as HTMLElement | null,
+    oxygen: null as HTMLElement | null,
+    caStatus: null as HTMLElement | null,
+    caStatusAlways: null as HTMLElement | null,
+    tickAlways: null as HTMLElement | null,
+    simulationStatus: null as HTMLElement | null,
+  };
+
   // Phase 10: Game Modes & Progression Systems
   public gameMode: GameMode | null = null;
   public progressionSystem: ProgressionSystem;
@@ -133,6 +146,24 @@ export class Game {
     // Setup keyboard shortcuts for render and time controls
     this.setupRenderControls();
     this.setupTimeControls();
+
+    // Cache DOM elements for performance
+    this.cacheUIElements();
+  }
+
+  /**
+   * Cache DOM elements on initialization to avoid repeated queries
+   */
+  private cacheUIElements(): void {
+    this.uiElements.fps = document.getElementById('fps');
+    this.uiElements.tick = document.getElementById('tick');
+    this.uiElements.position = document.getElementById('position');
+    this.uiElements.energy = document.getElementById('energy');
+    this.uiElements.oxygen = document.getElementById('oxygen');
+    this.uiElements.caStatus = document.getElementById('ca-status');
+    this.uiElements.caStatusAlways = document.getElementById('ca-status-always');
+    this.uiElements.tickAlways = document.getElementById('tick-always');
+    this.uiElements.simulationStatus = document.getElementById('simulation-status');
   }
 
   /**
@@ -552,56 +583,54 @@ export class Game {
    * Update UI elements (called via requestAnimationFrame for smoothness)
    */
   private updateUI(): void {
+    // Use cached DOM elements for performance
+
     // Update FPS
-    const fpsElement = document.getElementById('fps');
-    if (fpsElement) {
-      fpsElement.textContent = this.fps.toString();
+    if (this.uiElements.fps) {
+      this.uiElements.fps.textContent = this.fps.toString();
     }
 
     // Update CA tick
-    const tickElement = document.getElementById('tick');
-    if (tickElement) {
-      tickElement.textContent = this.simulator.getTick().toString();
+    const tick = this.simulator.getTick().toString();
+    if (this.uiElements.tick) {
+      this.uiElements.tick.textContent = tick;
     }
 
-    // Update player position
-    const posElement = document.getElementById('position');
-    if (posElement) {
+    // Update player position (only if changed significantly to avoid unnecessary reflows)
+    if (this.uiElements.position) {
       const pos = this.player.getPosition();
-      posElement.textContent = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
+      const posText = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
+      if (this.uiElements.position.textContent !== posText) {
+        this.uiElements.position.textContent = posText;
+      }
     }
 
-    // Update player energy
-    const energyElement = document.getElementById('energy');
-    if (energyElement) {
-      const state = this.player.getState();
-      energyElement.textContent = state.energy.toFixed(0);
+    // Update player energy and oxygen (batch state access)
+    const state = this.player.getState();
+    if (this.uiElements.energy) {
+      this.uiElements.energy.textContent = state.energy.toFixed(0);
     }
-
-    // Update player oxygen
-    const oxygenElement = document.getElementById('oxygen');
-    if (oxygenElement) {
-      const state = this.player.getState();
-      oxygenElement.textContent = state.oxygen.toFixed(0);
+    if (this.uiElements.oxygen) {
+      this.uiElements.oxygen.textContent = state.oxygen.toFixed(0);
     }
 
     // Update CA rendering status (simulation always runs in background)
-    const caStatusElement = document.getElementById('ca-status');
-    if (caStatusElement) {
-      caStatusElement.textContent = this.caRenderingEnabled ? 'ANIMATING' : 'PAUSED';
-      caStatusElement.style.color = this.caRenderingEnabled ? '#50e3c2' : '#ff6b35';
+    const statusText = this.caRenderingEnabled ? 'ANIMATING' : 'PAUSED';
+    const statusColor = this.caRenderingEnabled ? '#50e3c2' : '#ff6b35';
+
+    if (this.uiElements.caStatus) {
+      this.uiElements.caStatus.textContent = statusText;
+      this.uiElements.caStatus.style.color = statusColor;
     }
 
     // Update always-visible simulation status
-    const caStatusAlways = document.getElementById('ca-status-always');
-    if (caStatusAlways) {
-      caStatusAlways.textContent = this.caRenderingEnabled ? 'ANIMATING' : 'PAUSED';
-      caStatusAlways.style.color = this.caRenderingEnabled ? '#50e3c2' : '#ff6b35';
+    if (this.uiElements.caStatusAlways) {
+      this.uiElements.caStatusAlways.textContent = statusText;
+      this.uiElements.caStatusAlways.style.color = statusColor;
     }
 
-    const tickAlways = document.getElementById('tick-always');
-    if (tickAlways) {
-      tickAlways.textContent = this.simulator.getTick().toString();
+    if (this.uiElements.tickAlways) {
+      this.uiElements.tickAlways.textContent = tick;
     }
   }
 
