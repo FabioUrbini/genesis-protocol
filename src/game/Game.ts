@@ -43,8 +43,12 @@ export class Game {
   private renderStyle: RenderStyle = RenderStyle.Organic;
   private usePostProcessing: boolean = true;
   private isCAStepInProgress: boolean = false;
-  private caSimulationEnabled: boolean = true; // CA simulation runs in background
-  private caRenderingEnabled: boolean = false; // Visual updates start disabled
+
+  // Separate controls for simulation and rendering
+  private caSimulationEnabled: boolean = true; // CA simulation runs in background (always on by default)
+  private caStatusUpdatesEnabled: boolean = true; // Status changes visible (press T to toggle)
+  private caAnimationsEnabled: boolean = false; // Smooth animations (press A to toggle, expensive)
+
   private uiUpdateScheduled: boolean = false; // Throttle UI updates
   public timeManipulation: TimeManipulation;
 
@@ -192,27 +196,56 @@ export class Game {
           this.toggleVignette();
           break;
         case 't':
-          // Toggle CA simulation
-          this.toggleCASimulation();
+          // Toggle status updates (show/hide CA changes)
+          this.toggleStatusUpdates();
+          break;
+        case 'a':
+          // Toggle smooth animations (expensive)
+          this.toggleAnimations();
           break;
       }
     });
   }
 
   /**
-   * Toggle CA rendering (simulation always runs, this controls visual updates)
+   * Toggle status updates (show/hide CA state changes without animations)
+   * Press T to toggle - simulation runs in background, this shows snapshots
    */
-  public toggleCASimulation(): void {
-    this.caRenderingEnabled = !this.caRenderingEnabled;
-    console.log(`CA Rendering: ${this.caRenderingEnabled ? 'ENABLED' : 'DISABLED'}`);
+  public toggleStatusUpdates(): void {
+    this.caStatusUpdatesEnabled = !this.caStatusUpdatesEnabled;
+    console.log(`CA Status Updates: ${this.caStatusUpdatesEnabled ? 'ENABLED' : 'DISABLED'}`);
 
-    // When enabling rendering, force immediate render of current state
-    if (this.caRenderingEnabled) {
+    // When enabling status updates, immediately render current state snapshot
+    if (this.caStatusUpdatesEnabled) {
       const activeRenderer = this.getActiveRenderer();
       activeRenderer.renderGrid(this.simulator.getGrid());
     }
 
     this.scheduleUIUpdate();
+  }
+
+  /**
+   * Toggle smooth animations (expensive, press A to toggle)
+   * Animations interpolate between CA states for smooth visual transitions
+   */
+  public toggleAnimations(): void {
+    this.caAnimationsEnabled = !this.caAnimationsEnabled;
+    console.log(`CA Animations: ${this.caAnimationsEnabled ? 'ENABLED (High GPU cost)' : 'DISABLED'}`);
+
+    // If animations disabled, render current snapshot
+    if (!this.caAnimationsEnabled) {
+      const activeRenderer = this.getActiveRenderer();
+      activeRenderer.renderGrid(this.simulator.getGrid());
+    }
+
+    this.scheduleUIUpdate();
+  }
+
+  /**
+   * @deprecated Use toggleStatusUpdates() or toggleAnimations() instead
+   */
+  public toggleCASimulation(): void {
+    this.toggleStatusUpdates();
   }
 
   /**
@@ -509,8 +542,9 @@ export class Game {
           // Update main thread grid with worker result
           this.simulator.getGrid().getData().set(gridData);
 
-          // Only re-render if rendering is enabled (shows snapshots when toggled)
-          if (this.caRenderingEnabled) {
+          // Render if status updates are enabled (instant snapshot)
+          // Animations are handled separately in the render loop below
+          if (this.caStatusUpdatesEnabled && !this.caAnimationsEnabled) {
             const activeRenderer = this.getActiveRenderer();
             activeRenderer.renderGrid(this.simulator.getGrid());
           }
@@ -525,8 +559,9 @@ export class Game {
         // Fallback to main thread simulation
         this.simulator.step();
 
-        // Only re-render if rendering is enabled (shows snapshots when toggled)
-        if (this.caRenderingEnabled) {
+        // Render if status updates are enabled (instant snapshot)
+        // Animations are handled separately in the render loop below
+        if (this.caStatusUpdatesEnabled && !this.caAnimationsEnabled) {
           const activeRenderer = this.getActiveRenderer();
           activeRenderer.renderGrid(this.simulator.getGrid());
         }
@@ -534,6 +569,12 @@ export class Game {
         this.isCAStepInProgress = false;
         this.scheduleUIUpdate();
       }
+    }
+
+    // Handle smooth animations (expensive - updates every frame)
+    if (this.caAnimationsEnabled && this.caStatusUpdatesEnabled) {
+      const activeRenderer = this.getActiveRenderer();
+      activeRenderer.renderGrid(this.simulator.getGrid());
     }
 
     // Update player (physics, input, camera)
@@ -614,9 +655,17 @@ export class Game {
       this.uiElements.oxygen.textContent = state.oxygen.toFixed(0);
     }
 
-    // Update CA rendering status (simulation always runs in background)
-    const statusText = this.caRenderingEnabled ? 'ANIMATING' : 'PAUSED';
-    const statusColor = this.caRenderingEnabled ? '#50e3c2' : '#ff6b35';
+    // Update CA status display (two separate toggles)
+    let statusText = 'OFF';
+    let statusColor = '#888';
+
+    if (this.caStatusUpdatesEnabled && this.caAnimationsEnabled) {
+      statusText = 'ANIMATED (High Cost)';
+      statusColor = '#ff6b35'; // Orange for expensive mode
+    } else if (this.caStatusUpdatesEnabled) {
+      statusText = 'SNAPSHOTS';
+      statusColor = '#50e3c2'; // Cyan for snapshot mode
+    }
 
     if (this.uiElements.caStatus) {
       this.uiElements.caStatus.textContent = statusText;
