@@ -17,6 +17,9 @@ export interface TimeManipulationConfig {
   slowMultiplier: number;
   fastMultiplier: number;
   maxHistorySteps: number;
+  minSpeedLevel: number;
+  maxSpeedLevel: number;
+  maxTicksPerSecond: number;
 }
 
 /**
@@ -26,6 +29,9 @@ export const DEFAULT_TIME_CONFIG: TimeManipulationConfig = {
   slowMultiplier: 2.0,
   fastMultiplier: 0.25,
   maxHistorySteps: 10,
+  minSpeedLevel: 1,
+  maxSpeedLevel: 10,
+  maxTicksPerSecond: 50,
 };
 
 /**
@@ -47,6 +53,7 @@ export class TimeManipulation {
   private history: GridSnapshot[] = [];
   private baseUpdateInterval: number;
   private currentUpdateInterval: number;
+  private speedLevel: number = 1;
 
   constructor(
     simulator: CASimulator,
@@ -55,8 +62,9 @@ export class TimeManipulation {
   ) {
     this.simulator = simulator;
     this.baseUpdateInterval = baseUpdateInterval;
-    this.currentUpdateInterval = baseUpdateInterval;
     this.config = { ...DEFAULT_TIME_CONFIG, ...config };
+    this.speedLevel = 1;
+    this.currentUpdateInterval = this.calcIntervalForLevel(this.speedLevel);
   }
 
   /**
@@ -67,16 +75,16 @@ export class TimeManipulation {
 
     switch (mode) {
       case TimeMode.Normal:
-        this.currentUpdateInterval = this.baseUpdateInterval;
-        console.log('Time: NORMAL');
+        this.currentUpdateInterval = this.calcIntervalForLevel(this.speedLevel);
+        console.log(`Time: NORMAL (speed ${this.speedLevel})`);
         break;
       case TimeMode.Slow:
-        this.currentUpdateInterval = this.baseUpdateInterval * this.config.slowMultiplier;
-        console.log('Time: SLOW');
+        this.currentUpdateInterval = this.calcIntervalForLevel(this.speedLevel);
+        console.log(`Time: SLOW (speed ${this.speedLevel})`);
         break;
       case TimeMode.Fast:
-        this.currentUpdateInterval = this.baseUpdateInterval * this.config.fastMultiplier;
-        console.log('Time: FAST');
+        this.currentUpdateInterval = this.calcIntervalForLevel(this.speedLevel);
+        console.log(`Time: FAST (speed ${this.speedLevel})`);
         break;
       case TimeMode.Paused:
         console.log('Time: PAUSED');
@@ -92,6 +100,20 @@ export class TimeManipulation {
   }
 
   /**
+   * Calculate update interval for a given speed level.
+   * Level 1 = baseUpdateInterval, level maxSpeedLevel = 1000/maxTicksPerSecond ms.
+   */
+  private calcIntervalForLevel(level: number): number {
+    const minInterval = 1000 / this.config.maxTicksPerSecond; // e.g. 20ms for 50 ticks/sec
+    const maxInterval = this.baseUpdateInterval; // e.g. 2000ms
+    const range = this.config.maxSpeedLevel - this.config.minSpeedLevel; // 9
+    if (range <= 0) return maxInterval;
+    const t = (level - this.config.minSpeedLevel) / range; // 0..1
+    // Exponential interpolation for more natural speed curve
+    return maxInterval * Math.pow(minInterval / maxInterval, t);
+  }
+
+  /**
    * Get current update interval
    */
   public getUpdateInterval(): number {
@@ -99,21 +121,36 @@ export class TimeManipulation {
   }
 
   /**
+   * Get current speed level (1 to maxSpeedLevel)
+   */
+  public getSpeedLevel(): number {
+    return this.speedLevel;
+  }
+
+  /**
+   * Get max speed level
+   */
+  public getMaxSpeedLevel(): number {
+    return this.config.maxSpeedLevel;
+  }
+
+  /**
+   * Set speed level directly (clamped to valid range)
+   */
+  public setSpeedLevel(level: number): void {
+    this.speedLevel = Math.max(this.config.minSpeedLevel, Math.min(this.config.maxSpeedLevel, level));
+    if (this.mode !== TimeMode.Paused) {
+      this.currentUpdateInterval = this.calcIntervalForLevel(this.speedLevel);
+      console.log(`Speed level: ${this.speedLevel}/${this.config.maxSpeedLevel} (${Math.round(1000 / this.currentUpdateInterval)} ticks/sec)`);
+    }
+  }
+
+  /**
    * Get current speed multiplier
    */
   public getSpeed(): number {
-    switch (this.mode) {
-      case TimeMode.Normal:
-        return 1.0;
-      case TimeMode.Slow:
-        return 1.0 / this.config.slowMultiplier;
-      case TimeMode.Fast:
-        return 1.0 / this.config.fastMultiplier;
-      case TimeMode.Paused:
-        return 0.0;
-      default:
-        return 1.0;
-    }
+    if (this.mode === TimeMode.Paused) return 0.0;
+    return this.baseUpdateInterval / this.currentUpdateInterval;
   }
 
   /**
@@ -159,51 +196,36 @@ export class TimeManipulation {
    */
   public togglePause(): void {
     if (this.mode === TimeMode.Paused) {
-      this.setMode(TimeMode.Normal);
+      this.mode = TimeMode.Normal;
+      this.currentUpdateInterval = this.calcIntervalForLevel(this.speedLevel);
+      console.log(`Time: RESUMED (speed ${this.speedLevel})`);
     } else {
       this.setMode(TimeMode.Paused);
     }
   }
 
   /**
-   * Speed up time
+   * Speed up time (increase speed level by 1)
    */
   public speedUp(): void {
-    switch (this.mode) {
-      case TimeMode.Slow:
-        this.setMode(TimeMode.Normal);
-        break;
-      case TimeMode.Normal:
-        this.setMode(TimeMode.Fast);
-        break;
-      case TimeMode.Fast:
-        // Already at max speed
-        console.log('Time: Already at maximum speed');
-        break;
-      case TimeMode.Paused:
-        this.setMode(TimeMode.Normal);
-        break;
+    if (this.mode === TimeMode.Paused) {
+      this.mode = TimeMode.Normal;
+    }
+    if (this.speedLevel < this.config.maxSpeedLevel) {
+      this.setSpeedLevel(this.speedLevel + 1);
+    } else {
+      console.log('Time: Already at maximum speed');
     }
   }
 
   /**
-   * Slow down time
+   * Slow down time (decrease speed level by 1)
    */
   public slowDown(): void {
-    switch (this.mode) {
-      case TimeMode.Fast:
-        this.setMode(TimeMode.Normal);
-        break;
-      case TimeMode.Normal:
-        this.setMode(TimeMode.Slow);
-        break;
-      case TimeMode.Slow:
-        this.setMode(TimeMode.Paused);
-        break;
-      case TimeMode.Paused:
-        // Already paused
-        console.log('Time: Already paused');
-        break;
+    if (this.speedLevel > this.config.minSpeedLevel) {
+      this.setSpeedLevel(this.speedLevel - 1);
+    } else {
+      this.setMode(TimeMode.Paused);
     }
   }
 

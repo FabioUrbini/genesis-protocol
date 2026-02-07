@@ -81,20 +81,22 @@ document.addEventListener('keydown', (event) => {
       // For now, this is a placeholder
       break;
     case '1':
-      // Slow CA updates (5 seconds)
-      game.setCAUpdateInterval(5000);
-      console.warn('CA update interval: 5s');
-      break;
     case '2':
-      // Normal CA updates (2 seconds)
-      game.setCAUpdateInterval(2000);
-      console.warn('CA update interval: 2s');
-      break;
     case '3':
-      // Fast CA updates (500ms)
-      game.setCAUpdateInterval(500);
-      console.warn('CA update interval: 0.5s');
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+    case '0': {
+      // Set speed level directly: 1-9 map to levels 1-9, 0 maps to level 10
+      const level = event.key === '0' ? 10 : parseInt(event.key);
+      game.timeManipulation.setSpeedLevel(level);
+      game.setCAUpdateInterval(game.timeManipulation.getUpdateInterval());
+      console.warn(`Speed level: ${level}/10`);
       break;
+    }
   }
 });
 

@@ -268,14 +268,16 @@ export class Game {
           this.timeManipulation.togglePause();
           break;
         case '[':
-          // Slow down time
+          // Slow down time (decrease speed level)
           this.timeManipulation.slowDown();
           this.caUpdateInterval = this.timeManipulation.getUpdateInterval();
+          this.scheduleUIUpdate();
           break;
         case ']':
-          // Speed up time
+          // Speed up time (increase speed level)
           this.timeManipulation.speedUp();
           this.caUpdateInterval = this.timeManipulation.getUpdateInterval();
+          this.scheduleUIUpdate();
           break;
         case ',':
           // Rewind one step
@@ -781,7 +783,21 @@ export class Game {
     this.initializeTestPattern();
     this.getActiveRenderer().renderGrid(this.simulator.getGrid());
     this.lastCAUpdateTime = performance.now();
+    this.isCAStepInProgress = false;
+    this.gridNeedsRender = true;
+
+    // Clear time manipulation history so rewind doesn't restore pre-reset state
+    this.timeManipulation.clearHistory();
+
+    // Re-sync worker simulator with fresh grid data
+    if (this.useWorkers && this.workerSimulator) {
+      this.workerSimulator.terminate();
+      this.workerSimulator = null;
+      this.initializeWorkerSimulator(this.simulator.getGrid().width);
+    }
+
     this.player.respawn();
+    this.scheduleUIUpdate();
   }
 
   /**
