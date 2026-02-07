@@ -7,6 +7,12 @@ import { Player } from './Player';
 import { CASimulatorWorker } from '../workers/WorkerPool';
 import { TimeManipulation } from './TimeManipulation';
 import { Vector3 } from 'three';
+import { GameMode, GameModeType, SurvivalMode, ExplorerMode, ArchitectMode, PuzzleMode } from './GameMode';
+import { ProgressionSystem } from './ProgressionSystem';
+import { AchievementSystem } from './AchievementSystem';
+import { PatternCodex } from './PatternCodex';
+import { SaveSystem } from './SaveSystem';
+import { LeaderboardSystem } from './LeaderboardSystem';
 
 /**
  * Render style for the game
@@ -39,6 +45,20 @@ export class Game {
   private isCAStepInProgress: boolean = false;
   private timeManipulation: TimeManipulation;
 
+  // Phase 10: Game Modes & Progression Systems
+  public gameMode: GameMode | null = null;
+  public progressionSystem: ProgressionSystem;
+  public achievementSystem: AchievementSystem;
+  public patternCodex: PatternCodex;
+  public saveSystem: SaveSystem;
+  public leaderboardSystem: LeaderboardSystem;
+  public patternLibrary: any = null; // Will be set from external systems
+  public baseBuilding: any = null; // Will be set from external systems
+  public worldManager: any = null; // Will be set from external systems
+  public biomeManager: any = null; // Will be set from external systems
+  private totalPlayTime: number = 0;
+  private sessionStartTime: number = 0;
+
   constructor(canvas: HTMLCanvasElement, gridSize = 32, caUpdateInterval = 2000) {
     // Initialize CA simulator (main thread fallback)
     this.simulator = new CASimulator(gridSize, gridSize, gridSize);
@@ -57,6 +77,16 @@ export class Game {
 
     // Initialize time manipulation
     this.timeManipulation = new TimeManipulation(this.simulator, caUpdateInterval);
+
+    // Initialize Phase 10 systems
+    this.progressionSystem = new ProgressionSystem();
+    this.achievementSystem = new AchievementSystem();
+    this.patternCodex = new PatternCodex();
+    this.saveSystem = new SaveSystem();
+    this.leaderboardSystem = new LeaderboardSystem();
+
+    // Setup progression system listeners
+    this.setupProgressionListeners();
 
     // Get active renderer (organic by default)
     const activeRenderer = this.getActiveRenderer();
@@ -165,6 +195,84 @@ export class Game {
           break;
       }
     });
+  }
+
+  /**
+   * Setup listeners for progression system
+   */
+  private setupProgressionListeners(): void {
+    // Listen for level ups
+    this.progressionSystem.on('levelUp', (level: number) => {
+      console.log(`🎉 LEVEL UP! You are now level ${level}`);
+      // TODO: Show UI notification
+    });
+
+    // Listen for unlocks
+    this.progressionSystem.on('unlocked', (unlock: any) => {
+      console.log(`🔓 Unlocked: ${unlock.name}`);
+      // TODO: Show UI notification
+    });
+
+    // Listen for achievements
+    this.achievementSystem.on('unlocked', (achievement: any) => {
+      console.log(`🏆 Achievement: ${achievement.name}`);
+      this.progressionSystem.addXP(achievement.xpReward);
+      // TODO: Show UI notification
+    });
+
+    // Listen for pattern discoveries
+    this.patternCodex.on('discovered', (pattern: any) => {
+      console.log(`📖 Pattern Discovered: ${pattern.name}`);
+      this.achievementSystem.trackPatternDiscovered();
+      this.progressionSystem.addXP(pattern.rarity === 'legendary' ? 100 : 25);
+      // TODO: Show UI notification
+    });
+  }
+
+  /**
+   * Start a game mode
+   */
+  public startGameMode(type: GameModeType): void {
+    if (this.gameMode) {
+      this.gameMode.end();
+    }
+
+    switch (type) {
+      case GameModeType.SURVIVAL:
+        this.gameMode = new SurvivalMode(this, this.player);
+        break;
+      case GameModeType.EXPLORER:
+        this.gameMode = new ExplorerMode(this, this.player);
+        break;
+      case GameModeType.ARCHITECT:
+        this.gameMode = new ArchitectMode(this, this.player);
+        break;
+      case GameModeType.PUZZLE:
+        this.gameMode = new PuzzleMode(this, this.player);
+        break;
+    }
+
+    this.gameMode.start();
+    console.log(`🎮 Started ${this.gameMode.config.name}`);
+  }
+
+  /**
+   * End current game mode
+   */
+  public endGameMode(): void {
+    if (this.gameMode) {
+      this.gameMode.end();
+      this.gameMode = null;
+      console.log('🎮 Game mode ended');
+    }
+  }
+
+  /**
+   * Get total play time in milliseconds
+   */
+  public getTotalPlayTime(): number {
+    const sessionTime = this.sessionStartTime > 0 ? (Date.now() - this.sessionStartTime) : 0;
+    return this.totalPlayTime + sessionTime;
   }
 
   /**
@@ -283,12 +391,16 @@ export class Game {
    */
   public start(): void {
     if (this.isRunning) return;
-    
+
     this.isRunning = true;
     this.lastCAUpdateTime = performance.now();
     this.lastFrameTime = performance.now();
     this.fpsUpdateTime = performance.now();
-    
+    this.sessionStartTime = Date.now();
+
+    // Track first steps achievement
+    this.achievementSystem.unlock('first_steps');
+
     this.gameLoop();
   }
 
@@ -361,8 +473,19 @@ export class Game {
     // Update player (physics, input, camera)
     this.player.update(deltaTime);
 
+    // Update game mode
+    if (this.gameMode && this.gameMode.isActive) {
+      this.gameMode.update(deltaTime);
+    }
+
+    // Track achievements
+    this.trackPlayerAchievements(deltaTime);
+
     // Check if player died and respawn
     if (!this.player.isAlive()) {
+      if (this.gameMode) {
+        this.gameMode.onPlayerDeath();
+      }
       this.player.respawn();
     }
 
@@ -459,6 +582,60 @@ export class Game {
     this.getActiveRenderer().renderGrid(this.simulator.getGrid());
     this.lastCAUpdateTime = performance.now();
     this.player.respawn();
+  }
+
+  /**
+   * Track player achievements during gameplay
+   */
+  private trackPlayerAchievements(deltaTime: number): void {
+    // Track survival time
+    const playTimeSeconds = this.getTotalPlayTime() / 1000;
+    this.achievementSystem.trackSurvivalTime(playTimeSeconds);
+
+    // Track near-death experience
+    if (this.player.environmentalSuit) {
+      const energy = this.player.environmentalSuit.getCurrentEnergy();
+      const maxEnergy = this.player.environmentalSuit.getMaxEnergy();
+      if (energy > 0 && energy / maxEnergy < 0.05) {
+        this.achievementSystem.unlock('near_death');
+      }
+    }
+  }
+
+  /**
+   * Quick save the game
+   */
+  public async quickSave(): Promise<void> {
+    try {
+      await this.saveSystem.quickSave(
+        this,
+        this.progressionSystem,
+        this.achievementSystem,
+        this.patternCodex,
+        this.gameMode
+      );
+      console.log('⚡ Quick save completed');
+    } catch (error) {
+      console.error('Quick save failed:', error);
+    }
+  }
+
+  /**
+   * Quick load the game
+   */
+  public async quickLoad(): Promise<void> {
+    try {
+      await this.saveSystem.quickLoad(
+        this,
+        this.progressionSystem,
+        this.achievementSystem,
+        this.patternCodex,
+        this.gameMode
+      );
+      console.log('⚡ Quick load completed');
+    } catch (error) {
+      console.error('Quick load failed:', error);
+    }
   }
 
   /**
