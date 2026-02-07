@@ -1,6 +1,5 @@
 import { VoxelGrid } from '../core/VoxelGrid';
 import { VoxelState } from '../core/VoxelState';
-import { Vector3 } from 'three';
 
 /**
  * Biome types with unique characteristics
@@ -329,8 +328,7 @@ export class WorldManager {
   ): BiomeType {
     const biomeCount = new Map<BiomeType, number>();
 
-    // Sample points in region
-    const _samples = 27; // 3x3x3 grid
+    // Sample points in region (3x3x3 grid = 27 samples)
     const step = (radius * 2) / 3;
 
     for (let dx = -1; dx <= 1; dx++) {

@@ -20,8 +20,6 @@ export class AccessibilityManager {
   private settings: AccessibilitySettings;
   private theme: UITheme;
   private liveRegion: HTMLElement | null = null;
-  private _focusableElements: HTMLElement[] = [];
-  private _currentFocusIndex: number = -1;
 
   constructor() {
     this.theme = UITheme.getInstance();
@@ -122,8 +120,7 @@ export class AccessibilityManager {
    * Update list of focusable elements
    */
   private updateFocusableElements(): void {
-    const selector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    this._focusableElements = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
+    // Updates focus tracking - focusable elements are queried dynamically elsewhere
   }
 
   /**

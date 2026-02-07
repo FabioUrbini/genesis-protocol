@@ -1,5 +1,4 @@
 import { CASimulator } from '../core/CASimulator';
-import { VoxelGrid } from '../core/VoxelGrid';
 
 /**
  * Time manipulation mode

@@ -3,7 +3,7 @@
  * Visual interface for the inventory system
  */
 
-import { InventorySystem, ResourceType, InventoryItem, RESOURCE_INFO } from '../game/InventorySystem';
+import { InventorySystem, ResourceType, RESOURCE_INFO } from '../game/InventorySystem';
 
 export class InventoryUI {
   private container: HTMLElement | null = null;
@@ -56,7 +56,6 @@ export class InventoryUI {
     const grid = document.getElementById('inventory-grid');
     if (!grid) return;
 
-    const items = this.inventory.getAllItems();
     this.slotElements = [];
 
     // Create slots for all resource types
@@ -124,7 +123,10 @@ export class InventoryUI {
     const resourceTypes = Object.values(ResourceType);
     if (index >= 0 && index < resourceTypes.length) {
       const resourceType = resourceTypes[index];
+      if (!resourceType) return;
+
       const info = RESOURCE_INFO[resourceType];
+      if (!info) return;
 
       if (info.canConsume && this.inventory.getQuantity(resourceType) > 0) {
         const energyGained = this.inventory.consumeResource(resourceType);

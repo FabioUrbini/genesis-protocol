@@ -96,18 +96,18 @@ export class VoxelRenderer {
    * Setup scene lighting
    */
   private setupLighting(): void {
-    // Ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    // Ambient light (brighter for better visibility)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     this.scene.add(ambientLight);
 
-    // Directional light (sun)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    // Directional light (sun, brighter)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.4);
     directionalLight.position.set(50, 100, 50);
     directionalLight.castShadow = true;
     this.scene.add(directionalLight);
 
     // Point light for dramatic effect
-    const pointLight = new THREE.PointLight(0x4a90e2, 0.5, 100);
+    const pointLight = new THREE.PointLight(0x4a90e2, 0.7, 100);
     pointLight.position.set(0, 20, 0);
     this.scene.add(pointLight);
   }

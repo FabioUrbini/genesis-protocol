@@ -384,18 +384,18 @@ export class OrganicRenderer {
    * Setup scene lighting for organic look
    */
   private setupLighting(): void {
-    // Ambient light (low, for atmosphere)
-    const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.4);
+    // Ambient light (brighter for better visibility)
+    const ambientLight = new THREE.AmbientLight(0x404050, 0.7);
     this.scene.add(ambientLight);
 
-    // Main directional light (sun-like)
-    const mainLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    // Main directional light (sun-like, brighter)
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.8);
     mainLight.position.set(50, 100, 50);
     mainLight.castShadow = true;
     this.scene.add(mainLight);
 
     // Rim light (back light for silhouettes)
-    const rimLight = new THREE.DirectionalLight(0x4a90e2, 0.5);
+    const rimLight = new THREE.DirectionalLight(0x4a90e2, 0.7);
     rimLight.position.set(-50, 50, -50);
     this.scene.add(rimLight);
 
