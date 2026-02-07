@@ -35,6 +35,7 @@ export class Game {
   public player: Player;
   private isRunning: boolean;
   private lastCAUpdateTime: number;
+  private lastSnapshotRenderTime: number; // Track when we last rendered a snapshot
   private lastFrameTime: number;
   private caUpdateInterval: number; // milliseconds between CA updates
   private fps: number;
@@ -46,8 +47,9 @@ export class Game {
 
   // Separate controls for simulation and rendering
   private caSimulationEnabled: boolean = true; // CA simulation runs in background (always on by default)
-  private caStatusUpdatesEnabled: boolean = true; // Status changes visible (press T to toggle)
-  private caAnimationsEnabled: boolean = false; // Smooth animations (press A to toggle, expensive)
+  private caStatusUpdatesEnabled: boolean = false; // Status changes visible (press T to toggle) - OFF by default
+  private caAnimationsEnabled: boolean = false; // Smooth animations (press N to toggle, expensive)
+  private gridNeedsRender: boolean = true; // Flag if grid changed and needs re-render
 
   private uiUpdateScheduled: boolean = false; // Throttle UI updates
   public timeManipulation: TimeManipulation;
@@ -141,6 +143,7 @@ export class Game {
     // Game state
     this.isRunning = false;
     this.lastCAUpdateTime = 0;
+    this.lastSnapshotRenderTime = 0;
     this.lastFrameTime = 0;
     this.caUpdateInterval = caUpdateInterval;
     this.fps = 0;
@@ -191,15 +194,11 @@ export class Game {
           // Toggle bloom
           this.toggleBloom();
           break;
-        case 'v':
-          // Toggle vignette
-          this.toggleVignette();
-          break;
         case 't':
           // Toggle status updates (show/hide CA changes)
           this.toggleStatusUpdates();
           break;
-        case 'a':
+        case 'n':
           // Toggle smooth animations (expensive)
           this.toggleAnimations();
           break;
@@ -219,6 +218,8 @@ export class Game {
     if (this.caStatusUpdatesEnabled) {
       const activeRenderer = this.getActiveRenderer();
       activeRenderer.renderGrid(this.simulator.getGrid());
+      this.gridNeedsRender = false; // Clear flag since we just rendered
+      this.lastSnapshotRenderTime = performance.now();
     }
 
     this.scheduleUIUpdate();
@@ -542,12 +543,8 @@ export class Game {
           // Update main thread grid with worker result
           this.simulator.getGrid().getData().set(gridData);
 
-          // Render if status updates are enabled (instant snapshot)
-          // Animations are handled separately in the render loop below
-          if (this.caStatusUpdatesEnabled && !this.caAnimationsEnabled) {
-            const activeRenderer = this.getActiveRenderer();
-            activeRenderer.renderGrid(this.simulator.getGrid());
-          }
+          // Mark that grid has changed
+          this.gridNeedsRender = true;
 
           this.isCAStepInProgress = false;
           this.scheduleUIUpdate();
@@ -559,22 +556,32 @@ export class Game {
         // Fallback to main thread simulation
         this.simulator.step();
 
-        // Render if status updates are enabled (instant snapshot)
-        // Animations are handled separately in the render loop below
-        if (this.caStatusUpdatesEnabled && !this.caAnimationsEnabled) {
-          const activeRenderer = this.getActiveRenderer();
-          activeRenderer.renderGrid(this.simulator.getGrid());
-        }
+        // Mark that grid has changed
+        this.gridNeedsRender = true;
 
         this.isCAStepInProgress = false;
         this.scheduleUIUpdate();
       }
     }
 
-    // Handle smooth animations (expensive - updates every frame)
-    if (this.caAnimationsEnabled && this.caStatusUpdatesEnabled) {
-      const activeRenderer = this.getActiveRenderer();
-      activeRenderer.renderGrid(this.simulator.getGrid());
+    // Handle CA visualization based on mode
+    // Only render if status updates enabled AND grid has changed AND enough time passed
+    if (this.caStatusUpdatesEnabled && this.gridNeedsRender) {
+      if (this.caAnimationsEnabled) {
+        // Animations mode - render every frame (still expensive but only if enabled)
+        const activeRenderer = this.getActiveRenderer();
+        activeRenderer.renderGrid(this.simulator.getGrid());
+        // Keep gridNeedsRender true for continuous animation
+      } else {
+        // Snapshot mode - render only when CA step completes (throttled by CA update interval)
+        // Additional throttle: only render every 500ms minimum
+        if (currentTime - this.lastSnapshotRenderTime >= 500) {
+          const activeRenderer = this.getActiveRenderer();
+          activeRenderer.renderGrid(this.simulator.getGrid());
+          this.lastSnapshotRenderTime = currentTime;
+          this.gridNeedsRender = false; // Clear flag after rendering
+        }
+      }
     }
 
     // Update player (physics, input, camera)
