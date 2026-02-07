@@ -45,6 +45,7 @@ export class Game {
   private isCAStepInProgress: boolean = false;
   private caSimulationEnabled: boolean = true; // CA simulation runs in background
   private caRenderingEnabled: boolean = false; // Visual updates start disabled
+  private uiUpdateScheduled: boolean = false; // Throttle UI updates
   public timeManipulation: TimeManipulation;
 
   // Phase 10: Game Modes & Progression Systems
@@ -180,7 +181,7 @@ export class Game {
       activeRenderer.renderGrid(this.simulator.getGrid());
     }
 
-    this.updateUI();
+    this.scheduleUIUpdate();
   }
 
   /**
@@ -325,7 +326,7 @@ export class Game {
       }
     }
 
-    this.updateUI();
+    this.scheduleUIUpdate();
   }
 
   /**
@@ -456,7 +457,7 @@ export class Game {
       this.fps = this.frameCount;
       this.frameCount = 0;
       this.fpsUpdateTime = currentTime;
-      this.updateUI();
+      this.scheduleUIUpdate();
     }
 
     // Update CA simulation at fixed interval (only if enabled and not paused)
@@ -484,7 +485,7 @@ export class Game {
           }
 
           this.isCAStepInProgress = false;
-          this.updateUI();
+          this.scheduleUIUpdate();
         }).catch((error) => {
           console.error('Worker CA step failed:', error);
           this.isCAStepInProgress = false;
@@ -500,7 +501,7 @@ export class Game {
         }
 
         this.isCAStepInProgress = false;
-        this.updateUI();
+        this.scheduleUIUpdate();
       }
     }
 
@@ -535,7 +536,20 @@ export class Game {
   }
 
   /**
-   * Update UI elements
+   * Schedule UI update (throttled to avoid blocking)
+   */
+  private scheduleUIUpdate(): void {
+    if (this.uiUpdateScheduled) return;
+
+    this.uiUpdateScheduled = true;
+    requestAnimationFrame(() => {
+      this.updateUI();
+      this.uiUpdateScheduled = false;
+    });
+  }
+
+  /**
+   * Update UI elements (called via requestAnimationFrame for smoothness)
    */
   private updateUI(): void {
     // Update FPS

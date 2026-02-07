@@ -227,7 +227,7 @@
   </div>
 
   <!-- Always visible simulation status -->
-  <div id="simulation-status" style="
+  <div id="simulation-status" class="hidden" style="
     position: absolute;
     top: 20px;
     right: 20px;
@@ -241,7 +241,7 @@
     color: #fff;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
     min-width: 200px;
-    display: none;
+    z-index: 1000;
   ">
     <div style="font-size: 12px; opacity: 0.7; margin-bottom: 5px; text-align: center;">
       ⚙️ SIMULATION STATUS
@@ -281,12 +281,12 @@
         instructions.classList.add('hidden');
         ui.classList.remove('hidden');
         help.classList.remove('hidden');
-        if (simulationStatus) simulationStatus.style.display = 'block';
+        if (simulationStatus) simulationStatus.classList.remove('hidden');
       } else {
         instructions.classList.remove('hidden');
         ui.classList.add('hidden');
         help.classList.add('hidden');
-        if (simulationStatus) simulationStatus.style.display = 'none';
+        if (simulationStatus) simulationStatus.classList.add('hidden');
       }
     });
 
