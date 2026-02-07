@@ -43,7 +43,8 @@ export class Game {
   private renderStyle: RenderStyle = RenderStyle.Organic;
   private usePostProcessing: boolean = true;
   private isCAStepInProgress: boolean = false;
-  private caSimulationEnabled: boolean = false; // CA simulation starts disabled
+  private caSimulationEnabled: boolean = true; // CA simulation runs in background
+  private caRenderingEnabled: boolean = false; // Visual updates start disabled
   public timeManipulation: TimeManipulation;
 
   // Phase 10: Game Modes & Progression Systems
@@ -104,13 +105,13 @@ export class Game {
       );
     }
 
-    // Initialize player at spawn position (high above the world for overview)
+    // Initialize player at spawn position (far from center for overview)
     // Note: World is centered at origin (0,0,0) for rendering, but grid data
-    // is at grid coordinates (0 to gridSize-1). Spawn high above for overview.
+    // is at grid coordinates (0 to gridSize-1). Spawn far away for overview.
     const spawnPosition = new Vector3(
-      0,
-      40,  // High above the world
-      0
+      50,   // Far to the side
+      40,   // High above the world
+      50    // Far from center
     );
     this.player = new Player(
       activeRenderer.getScene(),
@@ -167,11 +168,18 @@ export class Game {
   }
 
   /**
-   * Toggle CA simulation on/off
+   * Toggle CA rendering (simulation always runs, this controls visual updates)
    */
   public toggleCASimulation(): void {
-    this.caSimulationEnabled = !this.caSimulationEnabled;
-    console.log(`CA Simulation: ${this.caSimulationEnabled ? 'ENABLED' : 'DISABLED'}`);
+    this.caRenderingEnabled = !this.caRenderingEnabled;
+    console.log(`CA Rendering: ${this.caRenderingEnabled ? 'ENABLED' : 'DISABLED'}`);
+
+    // When enabling rendering, force immediate render of current state
+    if (this.caRenderingEnabled) {
+      const activeRenderer = this.getActiveRenderer();
+      activeRenderer.renderGrid(this.simulator.getGrid());
+    }
+
     this.updateUI();
   }
 
@@ -371,29 +379,36 @@ export class Game {
    * Initialize with a test pattern for demonstration
    */
   private initializeTestPattern(): void {
-    const gridSize = this.simulator.getGrid().width;
-    const center = Math.floor(gridSize / 2);
-
-    // Create a 3D glider-like pattern in the center
+    // Create random clusters throughout the grid for varied gameplay
     this.simulator.fillPattern((x, y, z) => {
-      // Create a dense cluster in the center
-      const dx = x - center;
-      const dy = y - center;
-      const dz = z - center;
-      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      // Random density per region
+      const regionX = Math.floor(x / 5);
+      const regionY = Math.floor(y / 5);
+      const regionZ = Math.floor(z / 5);
+      const regionSeed = (regionX * 73856093) ^ (regionY * 19349663) ^ (regionZ * 83492791);
+      const regionRandom = Math.abs(Math.sin(regionSeed)) * 1000 % 1;
 
-      if (distance < 3) {
-        return VoxelState.Alive;
-      }
-      
-      // Add some random alive voxels for interesting evolution
-      if (distance < 8 && Math.random() < 0.15) {
-        return VoxelState.Alive;
+      // Create multiple random clusters
+      if (regionRandom > 0.85) {
+        // Dense core
+        if (Math.random() < 0.4) {
+          return VoxelState.Alive;
+        }
+
+        // Scattered energized voxels
+        if (Math.random() < 0.1) {
+          return VoxelState.Energized;
+        }
+
+        // Occasional crystallized
+        if (Math.random() < 0.05) {
+          return VoxelState.Crystallized;
+        }
       }
 
-      // Add a few energized voxels
-      if (distance < 5 && Math.random() < 0.05) {
-        return VoxelState.Energized;
+      // Random sparse alive voxels everywhere
+      if (Math.random() < 0.02) {
+        return VoxelState.Alive;
       }
 
       return VoxelState.Dead;
@@ -462,9 +477,11 @@ export class Game {
           // Update main thread grid with worker result
           this.simulator.getGrid().getData().set(gridData);
 
-          // Re-render grid after CA update
-          const activeRenderer = this.getActiveRenderer();
-          activeRenderer.renderGrid(this.simulator.getGrid());
+          // Only re-render if rendering is enabled (shows snapshots when toggled)
+          if (this.caRenderingEnabled) {
+            const activeRenderer = this.getActiveRenderer();
+            activeRenderer.renderGrid(this.simulator.getGrid());
+          }
 
           this.isCAStepInProgress = false;
           this.updateUI();
@@ -476,9 +493,11 @@ export class Game {
         // Fallback to main thread simulation
         this.simulator.step();
 
-        // Re-render grid after CA update
-        const activeRenderer = this.getActiveRenderer();
-        activeRenderer.renderGrid(this.simulator.getGrid());
+        // Only re-render if rendering is enabled (shows snapshots when toggled)
+        if (this.caRenderingEnabled) {
+          const activeRenderer = this.getActiveRenderer();
+          activeRenderer.renderGrid(this.simulator.getGrid());
+        }
 
         this.isCAStepInProgress = false;
         this.updateUI();
@@ -552,11 +571,11 @@ export class Game {
       oxygenElement.textContent = state.oxygen.toFixed(0);
     }
 
-    // Update CA simulation status
+    // Update CA rendering status (simulation always runs in background)
     const caStatusElement = document.getElementById('ca-status');
     if (caStatusElement) {
-      caStatusElement.textContent = this.caSimulationEnabled ? 'RUNNING' : 'PAUSED';
-      caStatusElement.style.color = this.caSimulationEnabled ? '#50e3c2' : '#ff6b35';
+      caStatusElement.textContent = this.caRenderingEnabled ? 'ANIMATING' : 'PAUSED';
+      caStatusElement.style.color = this.caRenderingEnabled ? '#50e3c2' : '#ff6b35';
     }
   }
 
