@@ -28,7 +28,7 @@ export interface TimeManipulationConfig {
 export const DEFAULT_TIME_CONFIG: TimeManipulationConfig = {
   slowMultiplier: 2.0,
   fastMultiplier: 0.25,
-  maxHistorySteps: 10,
+  maxHistorySteps: 100,
   minSpeedLevel: 1,
   maxSpeedLevel: 10,
   maxTicksPerSecond: 50,
@@ -54,6 +54,7 @@ export class TimeManipulation {
   private baseUpdateInterval: number;
   private currentUpdateInterval: number;
   private speedLevel: number = 1;
+  private reversing: boolean = false;
 
   constructor(
     simulator: CASimulator,
@@ -265,10 +266,42 @@ export class TimeManipulation {
   }
 
   /**
+   * Toggle continuous reverse mode (rewinds at current speed)
+   */
+  public toggleReverse(): void {
+    this.reversing = !this.reversing;
+    if (this.reversing) {
+      // Unpause if paused so the game loop runs
+      if (this.mode === TimeMode.Paused) {
+        this.mode = TimeMode.Normal;
+        this.currentUpdateInterval = this.calcIntervalForLevel(this.speedLevel);
+      }
+      console.log(`Time: REVERSING (speed ${this.speedLevel})`);
+    } else {
+      console.log('Time: Reverse stopped');
+    }
+  }
+
+  /**
+   * Check if currently in reverse mode
+   */
+  public isReversing(): boolean {
+    return this.reversing;
+  }
+
+  /**
+   * Stop reversing (without toggling)
+   */
+  public stopReverse(): void {
+    this.reversing = false;
+  }
+
+  /**
    * Clear history
    */
   public clearHistory(): void {
     this.history = [];
+    this.reversing = false;
     console.log('Time: History cleared');
   }
 

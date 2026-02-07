@@ -77,8 +77,13 @@ document.addEventListener('keydown', (event) => {
     case ' ':
       // Toggle pause (space bar)
       event.preventDefault();
-      // Note: We'll need to add pause/resume methods to Game class
-      // For now, this is a placeholder
+      game.timeManipulation.togglePause();
+      game.setCAUpdateInterval(game.timeManipulation.getUpdateInterval());
+      break;
+    case 'z':
+      // Toggle reverse (rewind ticks at current speed)
+      game.timeManipulation.toggleReverse();
+      game.setCAUpdateInterval(game.timeManipulation.getUpdateInterval());
       break;
     case '1':
     case '2':

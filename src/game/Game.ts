@@ -66,6 +66,14 @@ export class Game {
     caStatusAlways: null as HTMLElement | null,
     tickAlways: null as HTMLElement | null,
     simulationStatus: null as HTMLElement | null,
+    speedDisplay: null as HTMLElement | null,
+    speedDisplayAlways: null as HTMLElement | null,
+    pauseIcon: null as HTMLElement | null,
+    pauseLabel: null as HTMLElement | null,
+    pauseButton: null as HTMLElement | null,
+    tickTop: null as HTMLElement | null,
+    reverseButton: null as HTMLElement | null,
+    reverseLabel: null as HTMLElement | null,
   };
 
   // Phase 10: Game Modes & Progression Systems
@@ -173,6 +181,32 @@ export class Game {
     this.uiElements.caStatusAlways = document.getElementById('ca-status-always');
     this.uiElements.tickAlways = document.getElementById('tick-always');
     this.uiElements.simulationStatus = document.getElementById('simulation-status');
+    this.uiElements.speedDisplay = document.getElementById('speed-display');
+    this.uiElements.speedDisplayAlways = document.getElementById('speed-display-always');
+    this.uiElements.pauseIcon = document.getElementById('pause-icon');
+    this.uiElements.pauseLabel = document.getElementById('pause-label');
+    this.uiElements.pauseButton = document.getElementById('pause-button');
+    this.uiElements.tickTop = document.getElementById('tick-top');
+    this.uiElements.reverseButton = document.getElementById('reverse-button');
+    this.uiElements.reverseLabel = document.getElementById('reverse-label');
+
+    // Setup pause button click handler
+    if (this.uiElements.pauseButton) {
+      this.uiElements.pauseButton.addEventListener('click', () => {
+        this.timeManipulation.togglePause();
+        this.caUpdateInterval = this.timeManipulation.getUpdateInterval();
+        this.scheduleUIUpdate();
+      });
+    }
+
+    // Setup reverse button click handler
+    if (this.uiElements.reverseButton) {
+      this.uiElements.reverseButton.addEventListener('click', () => {
+        this.timeManipulation.toggleReverse();
+        this.caUpdateInterval = this.timeManipulation.getUpdateInterval();
+        this.scheduleUIUpdate();
+      });
+    }
   }
 
   /**
@@ -543,14 +577,44 @@ export class Game {
       this.isCAStepInProgress = true;
       this.lastCAUpdateTime = currentTime;
 
-      // Save snapshot for rewind functionality
-      this.timeManipulation.saveSnapshot();
+      // Check if we're in reverse mode
+      if (this.timeManipulation.isReversing()) {
+        // Rewind one step from history
+        const rewound = this.timeManipulation.rewind();
+        if (rewound) {
+          this.gridNeedsRender = true;
+          this.getActiveRenderer().renderGrid(this.simulator.getGrid());
+        } else {
+          // No more history - stop reversing
+          this.timeManipulation.stopReverse();
+        }
+        this.isCAStepInProgress = false;
+        this.scheduleUIUpdate();
+      } else {
+        // Save snapshot for rewind functionality
+        this.timeManipulation.saveSnapshot();
 
-      if (this.useWorkers && this.workerSimulator) {
-        // Use Web Worker for CA simulation (async, non-blocking)
-        this.workerSimulator.step().then((gridData) => {
-          // Update main thread grid with worker result
-          this.simulator.getGrid().getData().set(gridData);
+        if (this.useWorkers && this.workerSimulator) {
+          // Use Web Worker for CA simulation (async, non-blocking)
+          this.workerSimulator.step().then((gridData) => {
+            // Update main thread grid with worker result
+            this.simulator.getGrid().getData().set(gridData);
+
+            // Check for map expansion
+            this.checkGridExpansion();
+
+            // Mark that grid has changed
+            this.gridNeedsRender = true;
+
+            this.isCAStepInProgress = false;
+            this.scheduleUIUpdate();
+          }).catch((error) => {
+            console.error('Worker CA step failed:', error);
+            this.isCAStepInProgress = false;
+          });
+        } else {
+          // Fallback to main thread simulation
+          this.simulator.step();
 
           // Check for map expansion
           this.checkGridExpansion();
@@ -560,22 +624,7 @@ export class Game {
 
           this.isCAStepInProgress = false;
           this.scheduleUIUpdate();
-        }).catch((error) => {
-          console.error('Worker CA step failed:', error);
-          this.isCAStepInProgress = false;
-        });
-      } else {
-        // Fallback to main thread simulation
-        this.simulator.step();
-
-        // Check for map expansion
-        this.checkGridExpansion();
-
-        // Mark that grid has changed
-        this.gridNeedsRender = true;
-
-        this.isCAStepInProgress = false;
-        this.scheduleUIUpdate();
+        }
       }
     }
 
@@ -712,6 +761,51 @@ export class Game {
 
     if (this.uiElements.tickAlways) {
       this.uiElements.tickAlways.textContent = tick;
+    }
+
+    // Update speed display
+    const isPaused = this.timeManipulation.isPaused();
+    const speedLevel = this.timeManipulation.getSpeedLevel();
+    const maxSpeed = this.timeManipulation.getMaxSpeedLevel();
+    const speedText = isPaused ? 'PAUSED' : `${speedLevel}/${maxSpeed}`;
+    const speedColor = isPaused ? '#e74c3c' : '#50e3c2';
+
+    if (this.uiElements.speedDisplay) {
+      this.uiElements.speedDisplay.textContent = speedText;
+      this.uiElements.speedDisplay.style.color = speedColor;
+    }
+    if (this.uiElements.speedDisplayAlways) {
+      this.uiElements.speedDisplayAlways.textContent = speedText;
+      this.uiElements.speedDisplayAlways.style.color = speedColor;
+    }
+
+    // Update pause button
+    if (this.uiElements.pauseIcon) {
+      this.uiElements.pauseIcon.textContent = isPaused ? '▶' : '⏸';
+    }
+    if (this.uiElements.pauseLabel) {
+      this.uiElements.pauseLabel.textContent = isPaused ? 'RESUME' : 'PAUSE';
+    }
+    if (this.uiElements.pauseButton) {
+      (this.uiElements.pauseButton as HTMLElement).style.borderColor = isPaused
+        ? 'rgba(231, 76, 60, 0.6)'
+        : 'rgba(80, 227, 194, 0.4)';
+    }
+
+    // Update top tick counter
+    if (this.uiElements.tickTop) {
+      this.uiElements.tickTop.textContent = tick;
+    }
+
+    // Update reverse button
+    const isReversing = this.timeManipulation.isReversing();
+    if (this.uiElements.reverseLabel) {
+      this.uiElements.reverseLabel.textContent = isReversing ? 'FORWARD' : 'REVERSE';
+    }
+    if (this.uiElements.reverseButton) {
+      (this.uiElements.reverseButton as HTMLElement).style.borderColor = isReversing
+        ? 'rgba(255, 107, 53, 0.6)'
+        : 'rgba(80, 227, 194, 0.4)';
     }
   }
 

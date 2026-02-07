@@ -148,7 +148,29 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
-  
+
+  <!-- Top-center tick counter (always visible during gameplay) -->
+  <div id="tick-top-container" class="hidden" style="
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(80, 227, 194, 0.3);
+    backdrop-filter: blur(5px);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 1000;
+    font-size: 15px;
+    font-weight: bold;
+  ">
+    Tick: <span id="tick-top" style="color: #50e3c2;">0</span>
+  </div>
+
   <div id="loading">
     <div>Genesis Protocol</div>
     <div style="font-size: 16px; margin-top: 10px;">Loading...</div>
@@ -182,7 +204,10 @@
         <span class="key">T</span> - Toggle Status Updates (snapshots)</div>
       <div><span class="key">N</span> - Toggle Animations (smooth, lightweight)</div>
       <div><span class="key">R</span> - Reset simulation</div>
-      <div><span class="key">1 2 3</span> - Change CA speed (slow/normal/fast)</div>
+      <div><span class="key">P</span> / <span class="key">Space</span> - Pause / Resume</div>
+      <div><span class="key">1-9, 0</span> - Set speed (1=slow, 0=max)</div>
+      <div><span class="key">[ ]</span> - Decrease / Increase speed</div>
+      <div><span class="key">Z</span> - Toggle Reverse (rewind ticks)</div>
       <div><span class="key">ESC</span> - Release mouse pointer</div>
     </div>
   </div>
@@ -206,6 +231,10 @@
     <div>
       <span class="stat-label">Position:</span>
       <span id="position">0, 0, 0</span>
+    </div>
+    <div>
+      <span class="stat-label">Speed:</span>
+      <span id="speed-display" style="color: #50e3c2; font-weight: bold;">1/10</span>
     </div>
     <div>
       <span class="stat-label">CA Tick:</span>
@@ -254,9 +283,67 @@
       <div style="font-size: 11px; opacity: 0.8; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 8px;">
         Tick: <span id="tick-always" style="color: #50e3c2; font-weight: bold;">0</span>
       </div>
+      <div style="font-size: 13px; margin-top: 8px;">
+        Speed: <span id="speed-display-always" style="color: #50e3c2; font-weight: bold;">1/10</span>
+      </div>
       <div style="font-size: 10px; opacity: 0.7; margin-top: 5px;">
         <strong style="color: #50e3c2;">T</strong> = Snapshots · <strong style="color: #ff6b35;">N</strong> = Animations
       </div>
+    </div>
+  </div>
+
+  <!-- Bottom-center controls: Reverse + Pause buttons -->
+  <div id="bottom-controls" class="hidden" style="
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 1000;
+  ">
+    <!-- Reverse button -->
+    <div id="reverse-button" style="
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px 24px;
+      border-radius: 25px;
+      border: 2px solid rgba(80, 227, 194, 0.4);
+      backdrop-filter: blur(5px);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      color: #fff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+      cursor: pointer;
+      pointer-events: auto;
+      user-select: none;
+      transition: background 0.2s, border-color 0.2s;
+      font-size: 15px;
+      font-weight: bold;
+      text-align: center;
+      min-width: 140px;
+    ">
+      ⏪ <span id="reverse-label">REVERSE</span>
+    </div>
+
+    <!-- Pause button -->
+    <div id="pause-button" style="
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px 24px;
+      border-radius: 25px;
+      border: 2px solid rgba(80, 227, 194, 0.4);
+      backdrop-filter: blur(5px);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      color: #fff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+      cursor: pointer;
+      pointer-events: auto;
+      user-select: none;
+      transition: background 0.2s, border-color 0.2s;
+      font-size: 15px;
+      font-weight: bold;
+      text-align: center;
+      min-width: 140px;
+    ">
+      <span id="pause-icon">⏸</span> <span id="pause-label">PAUSE</span>
     </div>
   </div>
 
@@ -277,17 +364,23 @@
       const ui = document.getElementById('ui');
       const help = document.getElementById('help');
       const simulationStatus = document.getElementById('simulation-status');
+      const bottomControls = document.getElementById('bottom-controls');
+      const tickTopContainer = document.getElementById('tick-top-container');
 
       if (document.pointerLockElement) {
         instructions.classList.add('hidden');
         ui.classList.remove('hidden');
         help.classList.remove('hidden');
         if (simulationStatus) simulationStatus.classList.remove('hidden');
+        if (bottomControls) bottomControls.classList.remove('hidden');
+        if (tickTopContainer) tickTopContainer.classList.remove('hidden');
       } else {
         instructions.classList.remove('hidden');
         ui.classList.add('hidden');
         help.classList.add('hidden');
         if (simulationStatus) simulationStatus.classList.add('hidden');
+        if (bottomControls) bottomControls.classList.add('hidden');
+        if (tickTopContainer) tickTopContainer.classList.add('hidden');
       }
     });
 
