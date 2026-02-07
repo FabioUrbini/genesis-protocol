@@ -340,17 +340,19 @@ export class OrganicRenderer {
   private renderer: THREE.WebGLRenderer;
   private organicMeshes: THREE.Mesh[] = [];
   private voxelSize: number;
-  private renderMode: RenderMode = RenderMode.Metaballs;
+  private renderMode: RenderMode = RenderMode.Spheres;
   private blobRadius: number = 0.8; // Influence radius for metaballs
   private resolution: number = 1; // Marching cubes resolution multiplier
+  private cachedSphereGeometry: THREE.SphereGeometry | null = null;
+  private cachedMaterials: Map<VoxelState, THREE.MeshStandardMaterial> = new Map();
 
   constructor(canvas: HTMLCanvasElement, voxelSize = 1) {
     this.voxelSize = voxelSize;
 
-    // Create scene with deep space background
+    // Create scene with gradient space background
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0a15);  // Deep blue-black space
-    this.scene.fog = new THREE.FogExp2(0x0a0a15, 0.012);  // Subtle atmospheric fog
+    this.scene.background = new THREE.Color(0x1a1a2e);  // Dark purple-blue
+    this.scene.fog = new THREE.FogExp2(0x16213e, 0.008);  // Subtle blue atmospheric fog
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(
@@ -384,20 +386,25 @@ export class OrganicRenderer {
    * Setup scene lighting for organic look
    */
   private setupLighting(): void {
-    // Ambient light (brighter for better visibility)
-    const ambientLight = new THREE.AmbientLight(0x404050, 0.7);
+    // Warm ambient light for pleasant atmosphere
+    const ambientLight = new THREE.AmbientLight(0xcce0ff, 0.6);
     this.scene.add(ambientLight);
 
-    // Main directional light (sun-like, brighter)
-    const mainLight = new THREE.DirectionalLight(0xffffff, 1.8);
+    // Main directional light (slightly warm)
+    const mainLight = new THREE.DirectionalLight(0xffffee, 1.5);
     mainLight.position.set(50, 100, 50);
     mainLight.castShadow = true;
     this.scene.add(mainLight);
 
-    // Rim light (back light for silhouettes)
-    const rimLight = new THREE.DirectionalLight(0x4a90e2, 0.7);
+    // Blue accent rim light for depth
+    const rimLight = new THREE.DirectionalLight(0x88bbff, 0.6);
     rimLight.position.set(-50, 50, -50);
     this.scene.add(rimLight);
+
+    // Subtle fill light from below
+    const fillLight = new THREE.PointLight(0xff8844, 0.3, 200);
+    fillLight.position.set(0, -30, 0);
+    this.scene.add(fillLight);
 
     // Point lights for glow effect
     const glowLight1 = new THREE.PointLight(0xff6b35, 1.0, 50);
@@ -439,23 +446,32 @@ export class OrganicRenderer {
       }
     });
 
-    // Create instanced spheres for each state
-    const sphereGeometry = new THREE.SphereGeometry(this.voxelSize * 0.55, 16, 12);
+    // Reuse cached sphere geometry (reduced polygon count for performance)
+    if (!this.cachedSphereGeometry) {
+      this.cachedSphereGeometry = new THREE.SphereGeometry(this.voxelSize * 0.55, 8, 6);
+    }
 
     for (const [state, positions] of voxelsByState) {
       if (positions.length === 0) continue;
 
-      const material = new THREE.MeshStandardMaterial({
-        color: ORGANIC_COLORS[state],
-        emissive: ORGANIC_COLORS[state],
-        emissiveIntensity: ORGANIC_EMISSIVE[state],
-        metalness: 0.2,
-        roughness: 0.4,
-        transparent: state === VoxelState.Energized || state === VoxelState.Crystallized,
-        opacity: state === VoxelState.Energized ? 0.9 : 1.0,
-      });
+      // Reuse cached materials
+      if (!this.cachedMaterials.has(state)) {
+        this.cachedMaterials.set(state, new THREE.MeshStandardMaterial({
+          color: ORGANIC_COLORS[state],
+          emissive: ORGANIC_COLORS[state],
+          emissiveIntensity: ORGANIC_EMISSIVE[state],
+          metalness: 0.2,
+          roughness: 0.4,
+          transparent: state === VoxelState.Energized || state === VoxelState.Crystallized,
+          opacity: state === VoxelState.Energized ? 0.9 : 1.0,
+        }));
+      }
 
-      const instancedMesh = new THREE.InstancedMesh(sphereGeometry, material, positions.length);
+      const instancedMesh = new THREE.InstancedMesh(
+        this.cachedSphereGeometry,
+        this.cachedMaterials.get(state)!,
+        positions.length
+      );
 
       const matrix = new THREE.Matrix4();
       const offsetX = (grid.width * this.voxelSize) / 2;
@@ -463,9 +479,7 @@ export class OrganicRenderer {
       const offsetZ = (grid.depth * this.voxelSize) / 2;
 
       positions.forEach((pos, index) => {
-        // Add slight random scale for organic feel
-        const scale = 0.9 + Math.random() * 0.2;
-        matrix.makeScale(scale, scale, scale);
+        matrix.makeScale(1, 1, 1);
         matrix.setPosition(
           pos.x * this.voxelSize - offsetX,
           pos.y * this.voxelSize - offsetY,
@@ -522,6 +536,8 @@ export class OrganicRenderer {
 
   /**
    * Generate metaball geometry using marching cubes
+   * Uses voxel-centric splatting: iterate voxels and splat influence into nearby cells
+   * This is O(voxelCount × localRadius³) instead of O(mcGrid³ × voxelCount)
    */
   private generateMetaballGeometry(
     grid: VoxelGrid,
@@ -543,31 +559,53 @@ export class OrganicRenderer {
     // Scalar field
     const scalarField = new Float32Array(mcWidth * mcHeight * mcDepth);
 
-    // Calculate scalar field (metaball influence)
-    for (let z = 0; z < mcDepth; z++) {
-      for (let y = 0; y < mcHeight; y++) {
-        for (let x = 0; x < mcWidth; x++) {
-          const worldX = (x / resolution - padding) * this.voxelSize;
+    // Voxel-centric splatting: for each voxel, splat its influence into nearby MC cells
+    const radius = blobRadius * this.voxelSize;
+    const radiusSq = radius * radius;
+    const influenceRadius = radius * 2; // cutoff at radius*2 (where distSq < radiusSq*4)
+    const influenceCells = Math.ceil(influenceRadius * resolution / this.voxelSize);
+
+    for (const voxel of voxelPositions) {
+      // Convert voxel position to MC grid coordinates
+      const vcx = (voxel.x + padding) * resolution;
+      const vcy = (voxel.y + padding) * resolution;
+      const vcz = (voxel.z + padding) * resolution;
+
+      const minX = Math.max(0, Math.floor(vcx - influenceCells));
+      const maxX = Math.min(mcWidth - 1, Math.ceil(vcx + influenceCells));
+      const minY = Math.max(0, Math.floor(vcy - influenceCells));
+      const maxY = Math.min(mcHeight - 1, Math.ceil(vcy + influenceCells));
+      const minZ = Math.max(0, Math.floor(vcz - influenceCells));
+      const maxZ = Math.min(mcDepth - 1, Math.ceil(vcz + influenceCells));
+
+      const voxelWorldX = voxel.x * this.voxelSize;
+      const voxelWorldY = voxel.y * this.voxelSize;
+      const voxelWorldZ = voxel.z * this.voxelSize;
+
+      for (let z = minZ; z <= maxZ; z++) {
+        const worldZ = (z / resolution - padding) * this.voxelSize;
+        const dz = worldZ - voxelWorldZ;
+        const dzSq = dz * dz;
+        if (dzSq >= radiusSq * 4) continue;
+
+        const zOff = z * mcWidth * mcHeight;
+        for (let y = minY; y <= maxY; y++) {
           const worldY = (y / resolution - padding) * this.voxelSize;
-          const worldZ = (z / resolution - padding) * this.voxelSize;
+          const dy = worldY - voxelWorldY;
+          const dySq = dy * dy;
+          if (dzSq + dySq >= radiusSq * 4) continue;
 
-          let value = 0;
+          const yzOff = zOff + y * mcWidth;
+          for (let x = minX; x <= maxX; x++) {
+            const worldX = (x / resolution - padding) * this.voxelSize;
+            const dx = worldX - voxelWorldX;
+            const distSq = dx * dx + dySq + dzSq;
 
-          // Sum metaball contributions
-          for (const voxel of voxelPositions) {
-            const dx = worldX - voxel.x * this.voxelSize;
-            const dy = worldY - voxel.y * this.voxelSize;
-            const dz = worldZ - voxel.z * this.voxelSize;
-            const distSq = dx * dx + dy * dy + dz * dz;
-            const radius = blobRadius * this.voxelSize;
-
-            if (distSq < radius * radius * 4) {
-              // Smooth falloff function
-              value += Math.exp(-distSq / (radius * radius));
+            if (distSq < radiusSq * 4) {
+              const idx = yzOff + x;
+              scalarField[idx] = (scalarField[idx] ?? 0) + Math.exp(-distSq / radiusSq);
             }
           }
-
-          scalarField[x + y * mcWidth + z * mcWidth * mcHeight] = value;
         }
       }
     }
@@ -583,6 +621,21 @@ export class OrganicRenderer {
     for (let z = 0; z < mcDepth - 1; z++) {
       for (let y = 0; y < mcHeight - 1; y++) {
         for (let x = 0; x < mcWidth - 1; x++) {
+          // Early exit: skip cubes where all corners are zero (no metaball influence)
+          const idx000 = x + y * mcWidth + z * mcWidth * mcHeight;
+          const idx100 = idx000 + 1;
+          const idx010 = idx000 + mcWidth;
+          const idx110 = idx010 + 1;
+          const idx001 = idx000 + mcWidth * mcHeight;
+          const idx101 = idx001 + 1;
+          const idx011 = idx001 + mcWidth;
+          const idx111 = idx011 + 1;
+          if (scalarField[idx000] === 0 && scalarField[idx100] === 0 &&
+              scalarField[idx010] === 0 && scalarField[idx110] === 0 &&
+              scalarField[idx001] === 0 && scalarField[idx101] === 0 &&
+              scalarField[idx011] === 0 && scalarField[idx111] === 0) {
+            continue;
+          }
           this.marchCube(
             x, y, z,
             mcWidth, mcHeight,
@@ -743,11 +796,17 @@ export class OrganicRenderer {
   private clearMeshes(): void {
     for (const mesh of this.organicMeshes) {
       this.scene.remove(mesh);
-      mesh.geometry.dispose();
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach(m => m.dispose());
-      } else {
-        (mesh.material as THREE.Material).dispose();
+      // Only dispose geometry that isn't our cached sphere geometry
+      if (mesh.geometry !== this.cachedSphereGeometry) {
+        mesh.geometry.dispose();
+      }
+      // Don't dispose cached materials - they are reused
+      if (!this.cachedMaterials.has(mesh.userData.state)) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(m => m.dispose());
+        } else {
+          (mesh.material as THREE.Material).dispose();
+        }
       }
     }
     this.organicMeshes = [];

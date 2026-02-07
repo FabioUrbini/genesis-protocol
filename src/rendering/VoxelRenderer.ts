@@ -25,6 +25,17 @@ const EMISSIVE_INTENSITY: Record<VoxelState, number> = {
 };
 
 /**
+ * Pre-cached THREE.Color objects for lightweight rendering (avoids per-voxel allocation)
+ */
+const CACHED_COLORS: Record<VoxelState, THREE.Color> = {
+  [VoxelState.Dead]: new THREE.Color(VOXEL_COLORS[VoxelState.Dead]),
+  [VoxelState.Alive]: new THREE.Color(VOXEL_COLORS[VoxelState.Alive]),
+  [VoxelState.Energized]: new THREE.Color(VOXEL_COLORS[VoxelState.Energized]),
+  [VoxelState.Crystallized]: new THREE.Color(VOXEL_COLORS[VoxelState.Crystallized]),
+  [VoxelState.Corrupted]: new THREE.Color(VOXEL_COLORS[VoxelState.Corrupted]),
+};
+
+/**
  * Face direction for greedy meshing (unused but kept for future reference)
  */
 // enum _FaceDirection {
@@ -51,13 +62,18 @@ export class VoxelRenderer {
   private frustum: THREE.Frustum;
   private cameraMatrix: THREE.Matrix4;
 
+  // Lightweight point-based rendering for smooth updates
+  private pointsMesh: THREE.Points | null = null;
+  private pointsGeometry: THREE.BufferGeometry | null = null;
+  private useLightweightMode: boolean = false;
+
   constructor(canvas: HTMLCanvasElement, voxelSize = 1) {
     this.voxelSize = voxelSize;
     
-    // Create scene with deep space background
+    // Create scene with gradient space background
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0a15);  // Deep blue-black space
-    this.scene.fog = new THREE.Fog(0x0a0a15, 50, 200);  // Distance fog
+    this.scene.background = new THREE.Color(0x1a1a2e);  // Dark purple-blue
+    this.scene.fog = new THREE.Fog(0x16213e, 80, 250);  // Subtle blue fog for depth
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(
@@ -96,33 +112,130 @@ export class VoxelRenderer {
    * Setup scene lighting
    */
   private setupLighting(): void {
-    // Ambient light (brighter for better visibility)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Warm ambient light for pleasant atmosphere
+    const ambientLight = new THREE.AmbientLight(0xddeeff, 0.5);
     this.scene.add(ambientLight);
 
-    // Directional light (sun, brighter)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    // Main directional light (slightly warm white)
+    const directionalLight = new THREE.DirectionalLight(0xffffee, 1.2);
     directionalLight.position.set(50, 100, 50);
     directionalLight.castShadow = true;
     this.scene.add(directionalLight);
 
-    // Point light for dramatic effect
-    const pointLight = new THREE.PointLight(0x4a90e2, 0.7, 100);
-    pointLight.position.set(0, 20, 0);
-    this.scene.add(pointLight);
+    // Subtle blue accent light from below for depth
+    const accentLight = new THREE.PointLight(0x4a90e2, 0.4, 150);
+    accentLight.position.set(0, -20, 0);
+    this.scene.add(accentLight);
+
+    // Warm rim light for definition
+    const rimLight = new THREE.DirectionalLight(0xffaa88, 0.3);
+    rimLight.position.set(-50, 20, -50);
+    this.scene.add(rimLight);
+  }
+
+  /**
+   * Enable/disable lightweight rendering mode (points instead of meshes)
+   */
+  public setLightweightMode(enabled: boolean): void {
+    this.useLightweightMode = enabled;
+    if (!enabled) {
+      // Clean up points mesh when switching back to full rendering
+      if (this.pointsMesh) {
+        this.scene.remove(this.pointsMesh);
+        this.pointsMesh = null;
+      }
+      if (this.pointsGeometry) {
+        this.pointsGeometry.dispose();
+        this.pointsGeometry = null;
+      }
+    }
   }
 
   /**
    * Render voxel grid using greedy meshing
    */
   public renderGrid(grid: VoxelGrid): void {
-    // Clear previous meshes
-    this.clearMeshes();
-
-    if (this.useGreedyMeshing) {
-      this.renderGridGreedy(grid);
+    if (this.useLightweightMode) {
+      this.renderGridLightweight(grid);
     } else {
-      this.renderGridInstanced(grid);
+      // Clear previous meshes
+      this.clearMeshes();
+
+      if (this.useGreedyMeshing) {
+        this.renderGridGreedy(grid);
+      } else {
+        this.renderGridInstanced(grid);
+      }
+    }
+  }
+
+  /**
+   * Ultra-fast lightweight rendering using points (for smooth updates)
+   */
+  private renderGridLightweight(grid: VoxelGrid): void {
+    const { width, height, depth } = grid;
+    const offsetX = (width * this.voxelSize) / 2;
+    const offsetY = (height * this.voxelSize) / 2;
+    const offsetZ = (depth * this.voxelSize) / 2;
+
+    // Count alive voxels
+    let voxelCount = 0;
+    grid.forEach((_x, _y, _z, state) => {
+      if (state !== VoxelState.Dead) voxelCount++;
+    });
+
+    // Pre-allocate arrays
+    const positions = new Float32Array(voxelCount * 3);
+    const colors = new Float32Array(voxelCount * 3);
+    const sizes = new Float32Array(voxelCount);
+
+    // Fill arrays with voxel data
+    let index = 0;
+    grid.forEach((x, y, z, state) => {
+      if (state === VoxelState.Dead) return;
+
+      const worldX = x * this.voxelSize - offsetX;
+      const worldY = y * this.voxelSize - offsetY;
+      const worldZ = z * this.voxelSize - offsetZ;
+
+      positions[index * 3] = worldX;
+      positions[index * 3 + 1] = worldY;
+      positions[index * 3 + 2] = worldZ;
+
+      const color = CACHED_COLORS[state];
+      colors[index * 3] = color.r;
+      colors[index * 3 + 1] = color.g;
+      colors[index * 3 + 2] = color.b;
+
+      sizes[index] = this.voxelSize * 8; // Make points visible
+
+      index++;
+    });
+
+    // Update or create geometry
+    if (this.pointsGeometry) {
+      this.pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      this.pointsGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      this.pointsGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+      if (this.pointsGeometry.attributes.position) this.pointsGeometry.attributes.position.needsUpdate = true;
+      if (this.pointsGeometry.attributes.color) this.pointsGeometry.attributes.color.needsUpdate = true;
+      if (this.pointsGeometry.attributes.size) this.pointsGeometry.attributes.size.needsUpdate = true;
+    } else {
+      this.pointsGeometry = new THREE.BufferGeometry();
+      this.pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      this.pointsGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      this.pointsGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+      const material = new THREE.PointsMaterial({
+        size: this.voxelSize * 8,
+        vertexColors: true,
+        sizeAttenuation: true,
+        transparent: false,
+        depthWrite: true,
+      });
+
+      this.pointsMesh = new THREE.Points(this.pointsGeometry, material);
+      this.scene.add(this.pointsMesh);
     }
   }
 

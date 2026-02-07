@@ -226,17 +226,22 @@ export class Game {
   }
 
   /**
-   * Toggle smooth animations (expensive, press A to toggle)
-   * Animations interpolate between CA states for smooth visual transitions
+   * Toggle smooth animations (press N to toggle)
+   * Uses lightweight point rendering for smooth updates
    */
   public toggleAnimations(): void {
     this.caAnimationsEnabled = !this.caAnimationsEnabled;
-    console.log(`CA Animations: ${this.caAnimationsEnabled ? 'ENABLED (High GPU cost)' : 'DISABLED'}`);
+    console.log(`CA Animations: ${this.caAnimationsEnabled ? 'ENABLED (Lightweight mode)' : 'DISABLED'}`);
 
-    // If animations disabled, render current snapshot
+    // If animations disabled, switch back to full quality and render snapshot
     if (!this.caAnimationsEnabled) {
+      if (this.renderStyle === RenderStyle.Cubes) {
+        this.cubeRenderer.setLightweightMode(false);
+      }
       const activeRenderer = this.getActiveRenderer();
       activeRenderer.renderGrid(this.simulator.getGrid());
+      this.gridNeedsRender = false;
+      this.lastSnapshotRenderTime = performance.now();
     }
 
     this.scheduleUIUpdate();
@@ -565,17 +570,27 @@ export class Game {
     }
 
     // Handle CA visualization based on mode
-    // Only render if status updates enabled AND grid has changed AND enough time passed
-    if (this.caStatusUpdatesEnabled && this.gridNeedsRender) {
+    if (this.caStatusUpdatesEnabled) {
       if (this.caAnimationsEnabled) {
-        // Animations mode - render every frame (still expensive but only if enabled)
-        const activeRenderer = this.getActiveRenderer();
-        activeRenderer.renderGrid(this.simulator.getGrid());
-        // Keep gridNeedsRender true for continuous animation
-      } else {
-        // Snapshot mode - render only when CA step completes (throttled by CA update interval)
-        // Additional throttle: only render every 500ms minimum
+        // Animations mode - lightweight point rendering at 10 FPS (100ms intervals)
+        if (currentTime - this.lastSnapshotRenderTime >= 100) {
+          // Enable lightweight mode for cube renderer (points instead of meshes)
+          if (this.renderStyle === RenderStyle.Cubes) {
+            this.cubeRenderer.setLightweightMode(true);
+          }
+
+          const activeRenderer = this.getActiveRenderer();
+          activeRenderer.renderGrid(this.simulator.getGrid());
+          this.lastSnapshotRenderTime = currentTime;
+        }
+      } else if (this.gridNeedsRender) {
+        // Snapshot mode - full quality render when CA changes (500ms minimum)
         if (currentTime - this.lastSnapshotRenderTime >= 500) {
+          // Disable lightweight mode for high-quality snapshots
+          if (this.renderStyle === RenderStyle.Cubes) {
+            this.cubeRenderer.setLightweightMode(false);
+          }
+
           const activeRenderer = this.getActiveRenderer();
           activeRenderer.renderGrid(this.simulator.getGrid());
           this.lastSnapshotRenderTime = currentTime;
@@ -667,11 +682,11 @@ export class Game {
     let statusColor = '#888';
 
     if (this.caStatusUpdatesEnabled && this.caAnimationsEnabled) {
-      statusText = 'ANIMATED (High Cost)';
-      statusColor = '#ff6b35'; // Orange for expensive mode
+      statusText = 'ANIMATED (10 FPS)';
+      statusColor = '#50e3c2'; // Cyan for lightweight animation
     } else if (this.caStatusUpdatesEnabled) {
-      statusText = 'SNAPSHOTS';
-      statusColor = '#50e3c2'; // Cyan for snapshot mode
+      statusText = 'SNAPSHOTS (2/sec)';
+      statusColor = '#4a90e2'; // Blue for snapshot mode
     }
 
     if (this.uiElements.caStatus) {

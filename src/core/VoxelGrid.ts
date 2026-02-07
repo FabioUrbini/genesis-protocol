@@ -1,4 +1,4 @@
-import { VoxelState, isValidVoxelState } from './VoxelState';
+import { VoxelState } from './VoxelState';
 
 /**
  * Efficient 3D voxel grid using flat Uint8Array for cache locality
@@ -44,14 +44,17 @@ export class VoxelGrid {
    * Returns Dead if out of bounds
    */
   public get(x: number, y: number, z: number): VoxelState {
-    if (!this.isInBounds(x, y, z)) {
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height || z < 0 || z >= this.depth) {
       return VoxelState.Dead;
     }
-    const value = this.data[this.getIndex(x, y, z)];
-    if (value === undefined) {
-      return VoxelState.Dead;
-    }
-    return isValidVoxelState(value) ? value : VoxelState.Dead;
+    return this.data[x + y * this.width + z * this.width * this.height] as VoxelState;
+  }
+
+  /**
+   * Fast get without bounds checking - caller must ensure valid coordinates
+   */
+  public getUnsafe(x: number, y: number, z: number): VoxelState {
+    return this.data[x + y * this.width + z * this.width * this.height] as VoxelState;
   }
 
   /**
@@ -131,13 +134,18 @@ export class VoxelGrid {
   }
 
   /**
-   * Iterate over all voxels
+   * Iterate over all voxels (uses direct data access for performance)
    */
   public forEach(callback: (x: number, y: number, z: number, state: VoxelState) => void): void {
-    for (let z = 0; z < this.depth; z++) {
-      for (let y = 0; y < this.height; y++) {
-        for (let x = 0; x < this.width; x++) {
-          callback(x, y, z, this.get(x, y, z));
+    const data = this.data;
+    const w = this.width;
+    const h = this.height;
+    const d = this.depth;
+    let idx = 0;
+    for (let z = 0; z < d; z++) {
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          callback(x, y, z, data[idx++] as VoxelState);
         }
       }
     }

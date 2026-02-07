@@ -57,23 +57,33 @@ export class CASimulator {
   }
 
   /**
-   * Inline neighbor counting for performance - avoids object allocation
+   * Inline neighbor counting for performance - uses raw data array access
    */
   private countNeighborsInline(x: number, y: number, z: number): void {
     let alive = 0;
     let corrupted = 0;
 
-    const grid = this.currentGrid;
+    const data = this.currentGrid.getData();
+    const w = this.currentGrid.width;
+    const h = this.currentGrid.height;
+    const d = this.currentGrid.depth;
+    const wh = w * h;
 
-    for (let dz = -1; dz <= 1; dz++) {
-      const nz = z + dz;
-      for (let dy = -1; dy <= 1; dy++) {
-        const ny = y + dy;
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0 && dz === 0) continue;
+    const xMin = x > 0 ? x - 1 : 0;
+    const xMax = x < w - 1 ? x + 1 : w - 1;
+    const yMin = y > 0 ? y - 1 : 0;
+    const yMax = y < h - 1 ? y + 1 : h - 1;
+    const zMin = z > 0 ? z - 1 : 0;
+    const zMax = z < d - 1 ? z + 1 : d - 1;
 
-          const nx = x + dx;
-          const state = grid.get(nx, ny, nz);
+    for (let nz = zMin; nz <= zMax; nz++) {
+      const zOff = nz * wh;
+      for (let ny = yMin; ny <= yMax; ny++) {
+        const yzOff = zOff + ny * w;
+        for (let nx = xMin; nx <= xMax; nx++) {
+          if (nx === x && ny === y && nz === z) continue;
+
+          const state = data[yzOff + nx];
 
           if (state !== VoxelState.Dead && state !== VoxelState.Corrupted) {
             alive++;
@@ -166,10 +176,18 @@ export class CASimulator {
       }
     } else {
       // Full update (first tick or dirty tracking disabled)
+      const currentData = this.currentGrid.getData();
+      const nextData = this.nextGrid.getData();
+      const wh = width * height;
+      const regionSize = this.regionSize;
+
       for (let z = 0; z < depth; z++) {
+        const zOff = z * wh;
         for (let y = 0; y < height; y++) {
+          const yzOff = zOff + y * width;
           for (let x = 0; x < width; x++) {
-            const currentState = this.currentGrid.get(x, y, z);
+            const idx = yzOff + x;
+            const currentState = currentData[idx] as VoxelState;
 
             // Inline neighbor counting (avoids object allocation)
             this.countNeighborsInline(x, y, z);
@@ -181,13 +199,13 @@ export class CASimulator {
               this.neighborResult.corruptedNeighbors
             );
 
-            this.nextGrid.set(x, y, z, nextState);
+            nextData[idx] = nextState;
 
             // Track if this voxel changed
             if (currentState !== nextState) {
-              const rx = Math.floor(x / this.regionSize);
-              const ry = Math.floor(y / this.regionSize);
-              const rz = Math.floor(z / this.regionSize);
+              const rx = (x / regionSize) | 0;
+              const ry = (y / regionSize) | 0;
+              const rz = (z / regionSize) | 0;
               newDirtyRegions.add(this.getRegionHash(rx, ry, rz));
             }
           }
@@ -210,6 +228,9 @@ export class CASimulator {
     const width = this.currentGrid.width;
     const height = this.currentGrid.height;
     const depth = this.currentGrid.depth;
+    const currentData = this.currentGrid.getData();
+    const nextData = this.nextGrid.getData();
+    const wh = width * height;
 
     let changed = false;
 
@@ -221,11 +242,13 @@ export class CASimulator {
     const endZ = Math.min(startZ + this.regionSize, depth);
 
     for (let z = startZ; z < endZ; z++) {
+      const zOff = z * wh;
       for (let y = startY; y < endY; y++) {
+        const yzOff = zOff + y * width;
         for (let x = startX; x < endX; x++) {
-          const currentState = this.currentGrid.get(x, y, z);
+          const idx = yzOff + x;
+          const currentState = currentData[idx] as VoxelState;
 
-          // Inline neighbor counting (avoids object allocation)
           this.countNeighborsInline(x, y, z);
 
           const nextState = this.rule.getNextState(
@@ -234,7 +257,7 @@ export class CASimulator {
             this.neighborResult.corruptedNeighbors
           );
 
-          this.nextGrid.set(x, y, z, nextState);
+          nextData[idx] = nextState;
 
           if (currentState !== nextState) {
             changed = true;
