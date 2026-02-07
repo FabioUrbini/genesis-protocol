@@ -18,10 +18,10 @@ const ORGANIC_COLORS: Record<VoxelState, THREE.Color> = {
  */
 const ORGANIC_EMISSIVE: Record<VoxelState, number> = {
   [VoxelState.Dead]: 0,
-  [VoxelState.Alive]: 0.1,
-  [VoxelState.Energized]: 0.8,
-  [VoxelState.Crystallized]: 0.4,
-  [VoxelState.Corrupted]: 0.5,
+  [VoxelState.Alive]: 0.05,
+  [VoxelState.Energized]: 0.25,
+  [VoxelState.Crystallized]: 0.1,
+  [VoxelState.Corrupted]: 0.15,
 };
 
 /**
@@ -373,7 +373,7 @@ export class OrganicRenderer {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.2;
+    this.renderer.toneMappingExposure = 0.9;
 
     // Add lighting
     this.setupLighting();
@@ -391,27 +391,27 @@ export class OrganicRenderer {
     this.scene.add(ambientLight);
 
     // Main directional light (slightly warm)
-    const mainLight = new THREE.DirectionalLight(0xffffee, 1.5);
+    const mainLight = new THREE.DirectionalLight(0xffffee, 1.0);
     mainLight.position.set(50, 100, 50);
     mainLight.castShadow = true;
     this.scene.add(mainLight);
 
     // Blue accent rim light for depth
-    const rimLight = new THREE.DirectionalLight(0x88bbff, 0.6);
+    const rimLight = new THREE.DirectionalLight(0x88bbff, 0.3);
     rimLight.position.set(-50, 50, -50);
     this.scene.add(rimLight);
 
     // Subtle fill light from below
-    const fillLight = new THREE.PointLight(0xff8844, 0.3, 200);
+    const fillLight = new THREE.PointLight(0xff8844, 0.15, 200);
     fillLight.position.set(0, -30, 0);
     this.scene.add(fillLight);
 
-    // Point lights for glow effect
-    const glowLight1 = new THREE.PointLight(0xff6b35, 1.0, 50);
+    // Subtle point lights for gentle glow effect
+    const glowLight1 = new THREE.PointLight(0xff6b35, 0.3, 50);
     glowLight1.position.set(0, 15, 0);
     this.scene.add(glowLight1);
 
-    const glowLight2 = new THREE.PointLight(0x50e3c2, 0.8, 50);
+    const glowLight2 = new THREE.PointLight(0x50e3c2, 0.25, 50);
     glowLight2.position.set(10, 5, -10);
     this.scene.add(glowLight2);
   }

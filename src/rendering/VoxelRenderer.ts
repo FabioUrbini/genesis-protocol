@@ -19,9 +19,9 @@ const VOXEL_COLORS: Record<VoxelState, number> = {
 const EMISSIVE_INTENSITY: Record<VoxelState, number> = {
   [VoxelState.Dead]: 0,
   [VoxelState.Alive]: 0,
-  [VoxelState.Energized]: 0.5,
-  [VoxelState.Crystallized]: 0.2,
-  [VoxelState.Corrupted]: 0.3,
+  [VoxelState.Energized]: 0.15,
+  [VoxelState.Crystallized]: 0.05,
+  [VoxelState.Corrupted]: 0.1,
 };
 
 /**
@@ -117,18 +117,18 @@ export class VoxelRenderer {
     this.scene.add(ambientLight);
 
     // Main directional light (slightly warm white)
-    const directionalLight = new THREE.DirectionalLight(0xffffee, 1.2);
+    const directionalLight = new THREE.DirectionalLight(0xffffee, 0.9);
     directionalLight.position.set(50, 100, 50);
     directionalLight.castShadow = true;
     this.scene.add(directionalLight);
 
     // Subtle blue accent light from below for depth
-    const accentLight = new THREE.PointLight(0x4a90e2, 0.4, 150);
+    const accentLight = new THREE.PointLight(0x4a90e2, 0.2, 150);
     accentLight.position.set(0, -20, 0);
     this.scene.add(accentLight);
 
     // Warm rim light for definition
-    const rimLight = new THREE.DirectionalLight(0xffaa88, 0.3);
+    const rimLight = new THREE.DirectionalLight(0xffaa88, 0.15);
     rimLight.position.set(-50, 20, -50);
     this.scene.add(rimLight);
   }

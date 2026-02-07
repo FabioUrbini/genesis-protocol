@@ -41,9 +41,9 @@ export interface PostProcessingConfig {
  */
 export const DEFAULT_POST_PROCESSING_CONFIG: PostProcessingConfig = {
   bloomEnabled: true,
-  bloomStrength: 1.5,
-  bloomThreshold: 0.2,
-  bloomRadius: 0.8,
+  bloomStrength: 0.4,
+  bloomThreshold: 0.6,
+  bloomRadius: 0.4,
   fxaaEnabled: true,
   vignetteEnabled: true,
   vignetteIntensity: 0.4,
