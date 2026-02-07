@@ -53,7 +53,82 @@ const R = VoxelState.Corrupted;
 
 export const BLOCK: Pattern = createPattern(
   'Block',
-  'Simple 2x2x2 cube - most basic still life',
+  'Most common still life - simple 2x2 square',
+  [
+    [
+      [D, D, D, D],
+      [D, A, A, D],
+      [D, A, A, D],
+      [D, D, D, D],
+    ],
+  ],
+  PatternCategory.StillLife
+);
+
+export const BEEHIVE: Pattern = createPattern(
+  'Beehive',
+  'Second most common still life - hexagonal pattern',
+  [
+    [
+      [D, D, D, D, D, D],
+      [D, D, A, A, D, D],
+      [D, A, D, D, A, D],
+      [D, D, A, A, D, D],
+      [D, D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.StillLife
+);
+
+export const LOAF: Pattern = createPattern(
+  'Loaf',
+  'Third most common still life - discovered by Conway',
+  [
+    [
+      [D, D, D, D, D, D],
+      [D, D, A, A, D, D],
+      [D, A, D, D, A, D],
+      [D, D, A, D, A, D],
+      [D, D, D, A, D, D],
+      [D, D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.StillLife
+);
+
+export const BOAT: Pattern = createPattern(
+  'Boat',
+  'Fourth most common still life - small and stable',
+  [
+    [
+      [D, D, D, D, D],
+      [D, A, A, D, D],
+      [D, A, D, A, D],
+      [D, D, A, D, D],
+      [D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.StillLife
+);
+
+export const TUB: Pattern = createPattern(
+  'Tub',
+  'Fifth most common still life - minimal stable pattern',
+  [
+    [
+      [D, D, D, D, D],
+      [D, D, A, D, D],
+      [D, A, D, A, D],
+      [D, D, A, D, D],
+      [D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.StillLife
+);
+
+export const BLOCK_3D: Pattern = createPattern(
+  'Block 3D',
+  '3D cube version - simple 2x2x2 cube',
   [
     [
       [A, A],
@@ -117,9 +192,54 @@ export const PYRAMID: Pattern = createPattern(
  * Oscillators (repeat after N steps)
  */
 
+export const BLINKER: Pattern = createPattern(
+  'Blinker',
+  'Classic period-2 oscillator - simplest oscillating pattern',
+  [
+    [
+      [D, D, D, D, D],
+      [D, A, A, A, D],
+      [D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.Oscillator
+);
+
+export const TOAD: Pattern = createPattern(
+  'Toad',
+  'Period-2 oscillator discovered by Simon Norton in 1970',
+  [
+    [
+      [D, D, D, D, D, D],
+      [D, D, D, A, D, D],
+      [D, A, D, D, A, D],
+      [D, A, D, D, A, D],
+      [D, D, A, D, D, D],
+      [D, D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.Oscillator
+);
+
+export const BEACON: Pattern = createPattern(
+  'Beacon',
+  'Period-2 oscillator - two blocks alternating',
+  [
+    [
+      [D, D, D, D, D, D],
+      [D, A, A, D, D, D],
+      [D, A, D, D, D, D],
+      [D, D, D, D, A, D],
+      [D, D, D, A, A, D],
+      [D, D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.Oscillator
+);
+
 export const BLINKER_3D: Pattern = createPattern(
   'Blinker 3D',
-  'Oscillates between vertical and horizontal',
+  '3D adaptation - oscillates in three dimensions',
   [
     [
       [D, D, D],
@@ -142,7 +262,56 @@ export const BLINKER_3D: Pattern = createPattern(
 
 export const PULSAR: Pattern = createPattern(
   'Pulsar',
-  'Expands and contracts periodically',
+  'Most common period-3 oscillator - discovered in 1970',
+  [
+    [
+      [D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D],
+      [D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D],
+      [D, D, D, D, A, A, A, D, D, D, A, A, A, D, D, D, D],
+      [D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D],
+      [D, D, A, D, D, D, D, A, D, A, D, D, D, D, A, D, D],
+      [D, D, A, D, D, D, D, A, D, A, D, D, D, D, A, D, D],
+      [D, D, A, D, D, D, D, A, D, A, D, D, D, D, A, D, D],
+      [D, D, D, D, A, A, A, D, D, D, A, A, A, D, D, D, D],
+      [D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D],
+      [D, D, D, D, A, A, A, D, D, D, A, A, A, D, D, D, D],
+      [D, D, A, D, D, D, D, A, D, A, D, D, D, D, A, D, D],
+      [D, D, A, D, D, D, D, A, D, A, D, D, D, D, A, D, D],
+      [D, D, A, D, D, D, D, A, D, A, D, D, D, D, A, D, D],
+      [D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D],
+      [D, D, D, D, A, A, A, D, D, D, A, A, A, D, D, D, D],
+      [D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D],
+      [D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.Oscillator
+);
+
+export const PENTADECATHLON: Pattern = createPattern(
+  'Pentadecathlon',
+  'Period-15 oscillator - discovered by John Conway',
+  [
+    [
+      [D, D, D, D, D, D, D, D, D, D, D],
+      [D, D, D, D, D, A, D, D, D, D, D],
+      [D, D, D, D, D, A, D, D, D, D, D],
+      [D, D, D, D, A, D, A, D, D, D, D],
+      [D, D, D, D, D, A, D, D, D, D, D],
+      [D, D, D, D, D, A, D, D, D, D, D],
+      [D, D, D, D, D, A, D, D, D, D, D],
+      [D, D, D, D, D, A, D, D, D, D, D],
+      [D, D, D, D, A, D, A, D, D, D, D],
+      [D, D, D, D, D, A, D, D, D, D, D],
+      [D, D, D, D, D, A, D, D, D, D, D],
+      [D, D, D, D, D, D, D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.Oscillator
+);
+
+export const PULSAR_3D: Pattern = createPattern(
+  'Pulsar 3D',
+  '3D adaptation - expands and contracts in three dimensions',
   [
     [
       [D, A, A, A, D],
@@ -173,9 +342,24 @@ export const PULSAR: Pattern = createPattern(
  * Spaceships (move through space)
  */
 
+export const GLIDER: Pattern = createPattern(
+  'Glider',
+  'Most famous pattern - discovered by Richard Guy in 1970, moves diagonally',
+  [
+    [
+      [D, D, D, D, D],
+      [D, D, A, D, D],
+      [D, D, D, A, D],
+      [D, A, A, A, D],
+      [D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.Spaceship
+);
+
 export const GLIDER_3D: Pattern = createPattern(
   'Glider 3D',
-  'Simple spaceship that moves diagonally',
+  '3D adaptation - moves through space in three dimensions',
   [
     [
       [D, A, D],
@@ -196,9 +380,25 @@ export const GLIDER_3D: Pattern = createPattern(
   PatternCategory.Spaceship
 );
 
+export const LIGHTWEIGHT_SPACESHIP: Pattern = createPattern(
+  'Lightweight Spaceship (LWSS)',
+  'Discovered by John Conway - second spaceship ever found',
+  [
+    [
+      [D, D, D, D, D, D, D],
+      [D, D, A, D, D, A, D],
+      [D, A, D, D, D, D, D],
+      [D, A, D, D, D, A, D],
+      [D, A, A, A, A, D, D],
+      [D, D, D, D, D, D, D],
+    ],
+  ],
+  PatternCategory.Spaceship
+);
+
 export const LIGHTWEIGHT_SPACESHIP_3D: Pattern = createPattern(
   'Lightweight Spaceship 3D',
-  'Larger spaceship with predictable movement',
+  '3D adaptation of LWSS with predictable movement',
   [
     [
       [D, A, A, A, D],
@@ -387,22 +587,40 @@ export const RANDOM_CLUSTER: Pattern = createPattern(
  * All predefined patterns
  */
 export const PREDEFINED_PATTERNS: Pattern[] = [
-  // Still Life
+  // Classic Still Life (2D Conway patterns)
   BLOCK,
+  BEEHIVE,
+  LOAF,
+  BOAT,
+  TUB,
+
+  // 3D Still Life
+  BLOCK_3D,
   TUBE,
   PYRAMID,
   PLATFORM,
   TOWER,
 
-  // Oscillators
-  BLINKER_3D,
+  // Classic Oscillators (2D Conway patterns)
+  BLINKER,
+  TOAD,
+  BEACON,
   PULSAR,
+  PENTADECATHLON,
 
-  // Spaceships
+  // 3D Oscillators
+  BLINKER_3D,
+  PULSAR_3D,
+
+  // Classic Spaceships (2D Conway patterns)
+  GLIDER,
+  LIGHTWEIGHT_SPACESHIP,
+
+  // 3D Spaceships
   GLIDER_3D,
   LIGHTWEIGHT_SPACESHIP_3D,
 
-  // Special
+  // Special Energy Patterns
   ENERGY_CORE,
   CORRUPTION_SEED,
   CRYSTAL_CLUSTER,
