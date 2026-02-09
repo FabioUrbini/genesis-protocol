@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { VoxelGrid } from '../core/VoxelGrid';
 import { VoxelState } from '../core/VoxelState';
+import { createGalaxyBackground } from './SpaceBackground';
 
 /**
  * Material colors for different voxel states
@@ -70,10 +71,10 @@ export class VoxelRenderer {
   constructor(canvas: HTMLCanvasElement, voxelSize = 1) {
     this.voxelSize = voxelSize;
     
-    // Create scene with gradient space background
+    // Create scene with galaxy background
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1a2e);  // Dark purple-blue
-    this.scene.fog = new THREE.Fog(0x16213e, 80, 250);  // Subtle blue fog for depth
+    this.scene.background = createGalaxyBackground();
+    this.scene.fog = new THREE.Fog(0x0b1020, 80, 250);  // Subtle fog for depth
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(
