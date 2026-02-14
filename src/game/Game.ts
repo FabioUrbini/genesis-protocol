@@ -815,9 +815,11 @@ export class Game {
     const expanded = this.simulator.checkAndExpand();
     if (!expanded) return;
 
-    const { width } = this.simulator.getGridSize();
+    const { width, height, depth } = this.simulator.getGridSize();
     if (width === this.lastGridSize) return;
     this.lastGridSize = width;
+
+    console.log(`Grid expansion detected: now ${width}×${height}×${depth}`);
 
     // Update player's voxel grid reference
     this.player.updateGrid(this.simulator.getGrid());
@@ -826,7 +828,17 @@ export class Game {
     if (this.useWorkers && this.workerSimulator) {
       this.workerSimulator.terminate();
       this.workerSimulator = null;
-      this.initializeWorkerSimulator(width);
+
+      // Keep CA step "in progress" to prevent game loop from using worker before it's ready
+      this.isCAStepInProgress = true;
+
+      this.initializeWorkerSimulator(width).then(() => {
+        this.isCAStepInProgress = false;
+        console.log(`Worker re-initialized for ${width}³ grid`);
+      }).catch((error) => {
+        console.error('Failed to re-initialize worker after expansion:', error);
+        this.isCAStepInProgress = false;
+      });
     }
 
     // Force a full re-render on next frame
