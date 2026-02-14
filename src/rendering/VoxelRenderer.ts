@@ -66,11 +66,14 @@ export class VoxelRenderer {
   // Lightweight point-based rendering for smooth updates
   private pointsMesh: THREE.Points | null = null;
   private pointsGeometry: THREE.BufferGeometry | null = null;
+  private pointsPositions: Float32Array | null = null;
+  private pointsColors: Float32Array | null = null;
+  private pointsSizes: Float32Array | null = null;
   private useLightweightMode: boolean = false;
 
   constructor(canvas: HTMLCanvasElement, voxelSize = 1) {
     this.voxelSize = voxelSize;
-    
+
     // Create scene with galaxy background
     this.scene = new THREE.Scene();
     this.scene.background = createGalaxyBackground();
@@ -181,52 +184,56 @@ export class VoxelRenderer {
 
     // Count alive voxels
     let voxelCount = 0;
-    grid.forEach((_x, _y, _z, state) => {
-      if (state !== VoxelState.Dead) voxelCount++;
-    });
+    const data = grid.getData();
+    for (let i = 0; i < data.length; i++) {
+      if (data[i] !== VoxelState.Dead) voxelCount++;
+    }
 
-    // Pre-allocate arrays
-    const positions = new Float32Array(voxelCount * 3);
-    const colors = new Float32Array(voxelCount * 3);
-    const sizes = new Float32Array(voxelCount);
+    // Pre-allocate or reuse arrays
+    if (!this.pointsPositions || this.pointsPositions.length < voxelCount * 3) {
+      this.pointsPositions = new Float32Array(Math.max(voxelCount * 3, 1000 * 3));
+      this.pointsColors = new Float32Array(Math.max(voxelCount * 3, 1000 * 3));
+      this.pointsSizes = new Float32Array(Math.max(voxelCount, 1000));
+    }
+
+    const positions = this.pointsPositions!;
+    const colors = this.pointsColors!;
+    const sizes = this.pointsSizes!;
 
     // Fill arrays with voxel data
     let index = 0;
-    grid.forEach((x, y, z, state) => {
-      if (state === VoxelState.Dead) return;
+    const wh = width * height;
+    for (let z = 0; z < depth; z++) {
+      const zOff = z * wh;
+      for (let y = 0; y < height; y++) {
+        const yzOff = zOff + y * width;
+        for (let x = 0; x < width; x++) {
+          const state = data[yzOff + x] as VoxelState;
+          if (state === VoxelState.Dead) continue;
 
-      const worldX = x * this.voxelSize - offsetX;
-      const worldY = y * this.voxelSize - offsetY;
-      const worldZ = z * this.voxelSize - offsetZ;
+          const worldX = x * this.voxelSize - offsetX;
+          const worldY = y * this.voxelSize - offsetY;
+          const worldZ = z * this.voxelSize - offsetZ;
 
-      positions[index * 3] = worldX;
-      positions[index * 3 + 1] = worldY;
-      positions[index * 3 + 2] = worldZ;
+          positions[index * 3] = worldX;
+          positions[index * 3 + 1] = worldY;
+          positions[index * 3 + 2] = worldZ;
 
-      const color = CACHED_COLORS[state];
-      colors[index * 3] = color.r;
-      colors[index * 3 + 1] = color.g;
-      colors[index * 3 + 2] = color.b;
+          const color = CACHED_COLORS[state];
+          colors[index * 3] = color.r;
+          colors[index * 3 + 1] = color.g;
+          colors[index * 3 + 2] = color.b;
 
-      sizes[index] = this.voxelSize * 8; // Make points visible
+          sizes[index] = this.voxelSize * 8;
 
-      index++;
-    });
+          index++;
+        }
+      }
+    }
 
     // Update or create geometry
-    if (this.pointsGeometry) {
-      this.pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      this.pointsGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-      this.pointsGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-      if (this.pointsGeometry.attributes.position) this.pointsGeometry.attributes.position.needsUpdate = true;
-      if (this.pointsGeometry.attributes.color) this.pointsGeometry.attributes.color.needsUpdate = true;
-      if (this.pointsGeometry.attributes.size) this.pointsGeometry.attributes.size.needsUpdate = true;
-    } else {
+    if (!this.pointsGeometry) {
       this.pointsGeometry = new THREE.BufferGeometry();
-      this.pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      this.pointsGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-      this.pointsGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
       const material = new THREE.PointsMaterial({
         size: this.voxelSize * 8,
         vertexColors: true,
@@ -238,6 +245,19 @@ export class VoxelRenderer {
       this.pointsMesh = new THREE.Points(this.pointsGeometry, material);
       this.scene.add(this.pointsMesh);
     }
+
+    // Set attributes with draws count
+    this.pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions.subarray(0, index * 3), 3));
+    this.pointsGeometry.setAttribute('color', new THREE.BufferAttribute(colors.subarray(0, index * 3), 3));
+    this.pointsGeometry.setAttribute('size', new THREE.BufferAttribute(sizes.subarray(0, index), 1));
+
+    // We need to tell Three.js that the attributes changed and should be re-uploaded to GPU
+    this.pointsGeometry.attributes.position!.needsUpdate = true;
+    this.pointsGeometry.attributes.color!.needsUpdate = true;
+    this.pointsGeometry.attributes.size!.needsUpdate = true;
+
+    // Set draw range to only render current voxels
+    this.pointsGeometry.setDrawRange(0, index);
   }
 
   /**

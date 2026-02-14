@@ -74,8 +74,8 @@ document.addEventListener('keydown', (event) => {
       game.reset();
       console.warn('Simulation reset');
       break;
-    case ' ':
-      // Toggle pause (space bar)
+    case 'p':
+      // Toggle pause (P key)
       event.preventDefault();
       game.timeManipulation.togglePause();
       game.setCAUpdateInterval(game.timeManipulation.getUpdateInterval());

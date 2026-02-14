@@ -346,6 +346,7 @@ export class OrganicRenderer {
   private resolution: number = 1; // Marching cubes resolution multiplier
   private cachedSphereGeometry: THREE.SphereGeometry | null = null;
   private cachedMaterials: Map<VoxelState, THREE.MeshStandardMaterial> = new Map();
+  private instancedMeshes: Map<VoxelState, THREE.InstancedMesh> = new Map();
 
   constructor(canvas: HTMLCanvasElement, voxelSize = 1) {
     this.voxelSize = voxelSize;
@@ -421,12 +422,11 @@ export class OrganicRenderer {
    * Render voxel grid using organic/metaball style
    */
   public renderGrid(grid: VoxelGrid): void {
-    // Clear previous meshes
-    this.clearMeshes();
-
     if (this.renderMode === RenderMode.Spheres) {
       this.renderSpheres(grid);
     } else {
+      // Clear previous meshes only for non-instanced modes (metaballs still need full rebuild for now)
+      this.clearMeshes();
       this.renderMetaballs(grid);
     }
   }
@@ -435,63 +435,100 @@ export class OrganicRenderer {
    * Render using sphere instancing (simpler organic look)
    */
   private renderSpheres(grid: VoxelGrid): void {
-    // Count voxels per state
+    // Group voxel positions by state
     const voxelsByState = new Map<VoxelState, Array<{ x: number; y: number; z: number }>>();
 
-    grid.forEach((x, y, z, state) => {
-      if (state !== VoxelState.Dead) {
-        if (!voxelsByState.has(state)) {
-          voxelsByState.set(state, []);
-        }
-        voxelsByState.get(state)!.push({ x, y, z });
-      }
-    });
+    // Optimize: Use raw loop instead of forEach for better performance
+    const data = grid.getData();
+    const { width, height, depth } = grid;
+    const wh = width * height;
 
-    // Reuse cached sphere geometry (reduced polygon count for performance)
+    for (let z = 0; z < depth; z++) {
+      const zOff = z * wh;
+      for (let y = 0; y < height; y++) {
+        const yzOff = zOff + y * width;
+        for (let x = 0; x < width; x++) {
+          const state = data[yzOff + x] as VoxelState;
+          if (state !== VoxelState.Dead) {
+            if (!voxelsByState.has(state)) {
+              voxelsByState.set(state, []);
+            }
+            voxelsByState.get(state)!.push({ x, y, z });
+          }
+        }
+      }
+    }
+
+    // Reuse cached sphere geometry
     if (!this.cachedSphereGeometry) {
       this.cachedSphereGeometry = new THREE.SphereGeometry(this.voxelSize * 0.55, 8, 6);
     }
 
-    for (const [state, positions] of voxelsByState) {
-      if (positions.length === 0) continue;
+    // Update or create instanced meshes for each state
+    const currentStates = [VoxelState.Alive, VoxelState.Energized, VoxelState.Crystallized, VoxelState.Corrupted];
 
-      // Reuse cached materials
-      if (!this.cachedMaterials.has(state)) {
-        this.cachedMaterials.set(state, new THREE.MeshStandardMaterial({
-          color: ORGANIC_COLORS[state],
-          emissive: ORGANIC_COLORS[state],
-          emissiveIntensity: ORGANIC_EMISSIVE[state],
-          metalness: 0.2,
-          roughness: 0.4,
-          transparent: state === VoxelState.Energized || state === VoxelState.Crystallized,
-          opacity: state === VoxelState.Energized ? 0.9 : 1.0,
-        }));
+    const offsetX = (grid.width * this.voxelSize) / 2;
+    const offsetY = (grid.height * this.voxelSize) / 2;
+    const offsetZ = (grid.depth * this.voxelSize) / 2;
+    const matrix = new THREE.Matrix4();
+
+    for (const state of currentStates) {
+      const positions = voxelsByState.get(state) || [];
+
+      // Get or create instanced mesh
+      let instancedMesh = this.instancedMeshes.get(state);
+
+      // If we need a larger mesh than before, recreate it
+      if (!instancedMesh || instancedMesh.count < positions.length) {
+        if (instancedMesh) {
+          this.scene.remove(instancedMesh);
+          instancedMesh.dispose();
+        }
+
+        // Reuse cached materials
+        if (!this.cachedMaterials.has(state)) {
+          this.cachedMaterials.set(state, new THREE.MeshStandardMaterial({
+            color: ORGANIC_COLORS[state],
+            emissive: ORGANIC_COLORS[state],
+            emissiveIntensity: ORGANIC_EMISSIVE[state],
+            metalness: 0.2,
+            roughness: 0.4,
+            transparent: state === VoxelState.Energized || state === VoxelState.Crystallized,
+            opacity: state === VoxelState.Energized ? 0.9 : 1.0,
+          }));
+        }
+
+        // Create with some extra capacity to avoid frequent re-allocation
+        const capacity = Math.max(positions.length * 1.5, 100);
+        instancedMesh = new THREE.InstancedMesh(
+          this.cachedSphereGeometry,
+          this.cachedMaterials.get(state)!,
+          capacity
+        );
+        this.instancedMeshes.set(state, instancedMesh);
+        this.scene.add(instancedMesh);
       }
 
-      const instancedMesh = new THREE.InstancedMesh(
-        this.cachedSphereGeometry,
-        this.cachedMaterials.get(state)!,
-        positions.length
-      );
-
-      const matrix = new THREE.Matrix4();
-      const offsetX = (grid.width * this.voxelSize) / 2;
-      const offsetY = (grid.height * this.voxelSize) / 2;
-      const offsetZ = (grid.depth * this.voxelSize) / 2;
-
+      // Update instance matrices
       positions.forEach((pos, index) => {
-        matrix.makeScale(1, 1, 1);
         matrix.setPosition(
           pos.x * this.voxelSize - offsetX,
           pos.y * this.voxelSize - offsetY,
           pos.z * this.voxelSize - offsetZ
         );
-        instancedMesh.setMatrixAt(index, matrix);
+        instancedMesh!.setMatrixAt(index, matrix);
       });
 
+      instancedMesh.count = positions.length;
       instancedMesh.instanceMatrix.needsUpdate = true;
-      this.scene.add(instancedMesh);
-      this.organicMeshes.push(instancedMesh as unknown as THREE.Mesh);
+      instancedMesh.visible = positions.length > 0;
+    }
+
+    // Hide any other instanced meshes that weren't used
+    for (const [state, mesh] of this.instancedMeshes) {
+      if (!voxelsByState.has(state)) {
+        mesh.visible = false;
+      }
     }
   }
 
@@ -632,9 +669,9 @@ export class OrganicRenderer {
           const idx011 = idx001 + mcWidth;
           const idx111 = idx011 + 1;
           if (scalarField[idx000] === 0 && scalarField[idx100] === 0 &&
-              scalarField[idx010] === 0 && scalarField[idx110] === 0 &&
-              scalarField[idx001] === 0 && scalarField[idx101] === 0 &&
-              scalarField[idx011] === 0 && scalarField[idx111] === 0) {
+            scalarField[idx010] === 0 && scalarField[idx110] === 0 &&
+            scalarField[idx001] === 0 && scalarField[idx101] === 0 &&
+            scalarField[idx011] === 0 && scalarField[idx111] === 0) {
             continue;
           }
           this.marchCube(
@@ -739,12 +776,12 @@ export class OrganicRenderer {
     // Generate triangles
     const triangles = TRI_TABLE[cubeIndex];
     if (!triangles) return;
-    
+
     for (let i = 0; i < triangles.length; i += 3) {
       const idx0 = triangles[i];
       const idx1 = triangles[i + 1];
       const idx2 = triangles[i + 2];
-      
+
       if (idx0 === undefined || idx1 === undefined || idx2 === undefined) break;
       if (idx0 === -1 || idx1 === -1 || idx2 === -1) break;
 
@@ -762,11 +799,11 @@ export class OrganicRenderer {
         const e2x = v2[0] - v0[0];
         const e2y = v2[1] - v0[1];
         const e2z = v2[2] - v0[2];
-        
+
         let nx = e1y * e2z - e1z * e2y;
         let ny = e1z * e2x - e1x * e2z;
         let nz = e1x * e2y - e1y * e2x;
-        
+
         const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
         if (len > 0) {
           nx /= len;

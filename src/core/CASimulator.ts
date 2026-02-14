@@ -114,6 +114,13 @@ export class CASimulator {
   }
 
   /**
+   * Increment tick count externally (used when worker handles the simulation step)
+   */
+  public incrementTick(): void {
+    this.tickCount++;
+  }
+
+  /**
    * Set voxel in current grid
    */
   public setVoxel(x: number, y: number, z: number, state: VoxelState): void {
@@ -156,9 +163,9 @@ export class CASimulator {
               const nrz = rz + dz;
 
               if (nrx >= 0 && nry >= 0 && nrz >= 0 &&
-                  nrx < Math.ceil(width / this.regionSize) &&
-                  nry < Math.ceil(height / this.regionSize) &&
-                  nrz < Math.ceil(depth / this.regionSize)) {
+                nrx < Math.ceil(width / this.regionSize) &&
+                nry < Math.ceil(height / this.regionSize) &&
+                nrz < Math.ceil(depth / this.regionSize)) {
                 regionsToUpdate.add(this.getRegionHash(nrx, nry, nrz));
               }
             }
@@ -363,12 +370,12 @@ export class CASimulator {
 
     // Simulate one step into a temporary grid
     const tempGrid = new VoxelGrid(width, height, depth);
-    
+
     for (let z = 0; z < depth; z++) {
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const currentState = this.currentGrid.get(x, y, z);
-          
+
           const { aliveNeighbors, corruptedNeighbors } = count3DMooreNeighbors(
             (nx, ny, nz) => this.currentGrid.get(nx, ny, nz),
             x,
@@ -421,8 +428,8 @@ export class CASimulator {
         for (let x = 0; x < width && !needsExpand; x++) {
           // Only check voxels near any face
           const nearEdge = x < edgeMargin || x >= width - edgeMargin ||
-                           y < edgeMargin || y >= height - edgeMargin ||
-                           z < edgeMargin || z >= depth - edgeMargin;
+            y < edgeMargin || y >= height - edgeMargin ||
+            z < edgeMargin || z >= depth - edgeMargin;
           if (!nearEdge) continue;
 
           if (data[x + y * width + z * wh] !== VoxelState.Dead) {

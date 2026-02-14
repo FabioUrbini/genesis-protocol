@@ -121,7 +121,7 @@ export class Game {
 
     // Get active renderer (organic by default)
     const activeRenderer = this.getActiveRenderer();
-    
+
     // Render initial grid state (so voxels are visible before first CA update)
     activeRenderer.renderGrid(this.simulator.getGrid());
 
@@ -296,18 +296,14 @@ export class Game {
   private setupTimeControls(): void {
     document.addEventListener('keydown', (event) => {
       switch (event.key) {
-        case 'p':
-        case 'P':
-          // Pause/Unpause
-          this.timeManipulation.togglePause();
-          break;
-        case '[':
+        case '-':
           // Slow down time (decrease speed level)
           this.timeManipulation.slowDown();
           this.caUpdateInterval = this.timeManipulation.getUpdateInterval();
           this.scheduleUIUpdate();
           break;
-        case ']':
+        case '+':
+        case '=':
           // Speed up time (increase speed level)
           this.timeManipulation.speedUp();
           this.caUpdateInterval = this.timeManipulation.getUpdateInterval();
@@ -410,12 +406,12 @@ export class Game {
    * Toggle between cube and organic render styles
    */
   public toggleRenderStyle(): void {
-    this.renderStyle = this.renderStyle === RenderStyle.Cubes 
-      ? RenderStyle.Organic 
+    this.renderStyle = this.renderStyle === RenderStyle.Cubes
+      ? RenderStyle.Organic
       : RenderStyle.Cubes;
-    
+
     console.warn(`Render style: ${this.renderStyle}`);
-    
+
     // Re-render with new style
     const activeRenderer = this.getActiveRenderer();
     activeRenderer.renderGrid(this.simulator.getGrid());
@@ -570,9 +566,9 @@ export class Game {
 
     // Update CA simulation at fixed interval (only if enabled and not paused)
     if (this.caSimulationEnabled &&
-        currentTime - this.lastCAUpdateTime >= this.caUpdateInterval &&
-        !this.isCAStepInProgress &&
-        !this.timeManipulation.isPaused()) {
+      currentTime - this.lastCAUpdateTime >= this.caUpdateInterval &&
+      !this.isCAStepInProgress &&
+      !this.timeManipulation.isPaused()) {
 
       this.isCAStepInProgress = true;
       this.lastCAUpdateTime = currentTime;
@@ -599,6 +595,9 @@ export class Game {
           this.workerSimulator.step().then((gridData) => {
             // Update main thread grid with worker result
             this.simulator.getGrid().getData().set(gridData);
+
+            // Increment the main simulator's tick count to keep UI in sync
+            this.simulator.incrementTick();
 
             // Check for map expansion
             this.checkGridExpansion();

@@ -49,7 +49,7 @@ export const DEFAULT_POST_PROCESSING_CONFIG: PostProcessingConfig = {
   vignetteIntensity: 0.4,
   chromaticAberrationEnabled: false,
   chromaticAberrationStrength: 0.003,
-  ssaoEnabled: true,
+  ssaoEnabled: false,
   ssaoIntensity: 1.0,
   ssaoRadius: 0.5,
   depthOfFieldEnabled: false,

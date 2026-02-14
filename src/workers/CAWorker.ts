@@ -31,6 +31,9 @@ class CAWorkerState {
   private rule: CARule = new DefaultCARule();
   private tick: number = 0;
 
+  // Reusable neighbor result to avoid allocations
+  private neighborResult = { aliveNeighbors: 0, corruptedNeighbors: 0 };
+
   /**
    * Initialize worker with grid dimensions
    */
@@ -52,22 +55,39 @@ class CAWorkerState {
 
   /**
    * Perform one CA simulation step
+   * Optimized with raw array access and no per-voxel allocations
    */
   public step(): Uint8Array {
     if (!this.grid || !this.nextGrid) {
       throw new Error('Worker not initialized');
     }
 
-    const { width, height, depth } = this.grid;
+    const width = this.grid.width;
+    const height = this.grid.height;
+    const depth = this.grid.depth;
+    const currentData = this.grid.getData();
+    const nextData = this.nextGrid.getData();
+    const wh = width * height;
 
     // Apply CA rules to each voxel
-    for (let x = 0; x < width; x++) {
+    for (let z = 0; z < depth; z++) {
+      const zOff = z * wh;
       for (let y = 0; y < height; y++) {
-        for (let z = 0; z < depth; z++) {
-          const currentState = this.grid.get(x, y, z);
-          const { aliveNeighbors, corruptedNeighbors } = this.countNeighbors(x, y, z);
-          const newState = this.rule.getNextState(currentState, aliveNeighbors, corruptedNeighbors);
-          this.nextGrid.set(x, y, z, newState);
+        const yzOff = zOff + y * width;
+        for (let x = 0; x < width; x++) {
+          const idx = yzOff + x;
+          const currentState = currentData[idx] as VoxelState;
+
+          // Inline neighbor counting to avoid object allocation
+          this.countNeighborsInline(currentData, x, y, z, width, height, depth, wh);
+          
+          const newState = this.rule.getNextState(
+            currentState, 
+            this.neighborResult.aliveNeighbors, 
+            this.neighborResult.corruptedNeighbors
+          );
+          
+          nextData[idx] = newState;
         }
       }
     }
@@ -79,48 +99,53 @@ class CAWorkerState {
 
     this.tick++;
 
-    // Return grid data
-    return new Uint8Array(this.grid.getData());
+    // Return a copy of the grid data (cannot transfer internal buffer easily without breaking future steps)
+    // Using subarray and set to ensure we return a fresh buffer for transferring
+    const resultData = new Uint8Array(this.grid.getData().length);
+    resultData.set(this.grid.getData());
+    return resultData;
   }
 
   /**
-   * Count living neighbors in 3D Moore neighborhood (26 neighbors)
+   * Count neighbors using raw array access and no allocations
    */
-  private countNeighbors(x: number, y: number, z: number): { aliveNeighbors: number; corruptedNeighbors: number } {
-    if (!this.grid) {
-      throw new Error('Worker not initialized');
-    }
+  private countNeighborsInline(
+    data: Uint8Array,
+    x: number, y: number, z: number,
+    w: number, h: number, d: number,
+    wh: number
+  ): void {
+    let alive = 0;
+    let corrupted = 0;
 
-    let aliveNeighbors = 0;
-    let corruptedNeighbors = 0;
+    const xMin = x > 0 ? x - 1 : 0;
+    const xMax = x < w - 1 ? x + 1 : w - 1;
+    const yMin = y > 0 ? y - 1 : 0;
+    const yMax = y < h - 1 ? y + 1 : h - 1;
+    const zMin = z > 0 ? z - 1 : 0;
+    const zMax = z < d - 1 ? z + 1 : d - 1;
 
-    // Check all 26 neighbors (3x3x3 cube minus center)
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dz = -1; dz <= 1; dz++) {
-          // Skip center voxel
-          if (dx === 0 && dy === 0 && dz === 0) continue;
+    for (let nz = zMin; nz <= zMax; nz++) {
+      const zOff = nz * wh;
+      for (let ny = yMin; ny <= yMax; ny++) {
+        const yzOff = zOff + ny * w;
+        for (let nx = xMin; nx <= xMax; nx++) {
+          if (nx === x && ny === y && nz === z) continue;
 
-          const nx = x + dx;
-          const ny = y + dy;
-          const nz = z + dz;
+          const state = data[yzOff + nx];
 
-          const state = this.grid.get(nx, ny, nz);
-          
-          // Count alive voxels (Alive, Energized, Crystallized)
-          if (state === VoxelState.Alive || state === VoxelState.Energized || state === VoxelState.Crystallized) {
-            aliveNeighbors++;
+          if (state !== VoxelState.Dead && state !== VoxelState.Corrupted) {
+            alive++;
           }
-          
-          // Count corrupted voxels
           if (state === VoxelState.Corrupted) {
-            corruptedNeighbors++;
+            corrupted++;
           }
         }
       }
     }
 
-    return { aliveNeighbors, corruptedNeighbors };
+    this.neighborResult.aliveNeighbors = alive;
+    this.neighborResult.corruptedNeighbors = corrupted;
   }
 
   /**
@@ -130,7 +155,9 @@ class CAWorkerState {
     if (!this.grid) {
       throw new Error('Worker not initialized');
     }
-    return new Uint8Array(this.grid.getData());
+    const data = new Uint8Array(this.grid.getData().length);
+    data.set(this.grid.getData());
+    return data;
   }
 
   /**
