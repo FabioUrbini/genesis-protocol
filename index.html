@@ -384,8 +384,8 @@
       }
     });
 
-    // Update energy and oxygen bars
-    setInterval(() => {
+    // Update energy and oxygen bars using requestAnimationFrame for better performance
+    function updateBars() {
       const energyElement = document.getElementById('energy');
       const oxygenElement = document.getElementById('oxygen');
       const energyBar = document.getElementById('energy-bar');
@@ -400,7 +400,10 @@
         const oxygen = parseFloat(oxygenElement.textContent) || 0;
         oxygenBar.style.width = Math.max(0, Math.min(100, oxygen)) + '%';
       }
-    }, 100);
+      
+      requestAnimationFrame(updateBars);
+    }
+    requestAnimationFrame(updateBars);
   </script>
 </body>
 </html>
