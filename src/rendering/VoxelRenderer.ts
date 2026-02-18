@@ -76,7 +76,7 @@ export class VoxelRenderer {
 
     // Create scene with galaxy background
     this.scene = new THREE.Scene();
-    this.scene.background = createGalaxyBackground();
+    this.scene.background = new THREE.Color(0x000000);
     this.scene.fog = new THREE.Fog(0x0b1020, 80, 250);  // Subtle fog for depth
 
     // Create camera

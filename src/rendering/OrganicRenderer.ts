@@ -353,7 +353,7 @@ export class OrganicRenderer {
 
     // Create scene with galaxy background
     this.scene = new THREE.Scene();
-    this.scene.background = createGalaxyBackground();
+    this.scene.background = new THREE.Color(0x000000);
     this.scene.fog = new THREE.FogExp2(0x0b1020, 0.008);  // Subtle atmospheric fog
 
     // Create camera
