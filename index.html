@@ -131,7 +131,7 @@
     }
 
     .hidden {
-      display: none;
+      display: none !important;
     }
 
     /* ── Mode Selection Screen ─────────────────────────────── */
@@ -226,53 +226,74 @@
       transform: scale(1.04);
     }
 
-    /* ── 2D HUD ──────────────────────────────────────────────── */
-    #ui-2d {
+    /* ── 2D Sidebar ──────────────────────────────────────────── */
+    #sidebar-2d {
       position: absolute;
-      top: 20px;
-      left: 20px;
-      color: #fff;
-      font-size: 13px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-      background: rgba(0,0,0,0.6);
-      padding: 14px 18px;
-      border-radius: 10px;
-      border: 1px solid rgba(80,227,194,0.25);
-      backdrop-filter: blur(5px);
-      pointer-events: none;
-      min-width: 200px;
+      top: 0;
+      right: 0;
+      width: 210px;
+      height: 100vh;
+      background: rgba(0,0,0,0.82);
+      border-left: 1px solid rgba(80,227,194,0.2);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      padding: 18px 16px;
+      gap: 18px;
+      overflow-y: auto;
+      z-index: 100;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     }
 
-    #ui-2d .hud-title {
+    #sidebar-2d .sidebar-title {
       font-size: 15px;
       font-weight: bold;
       color: #50e3c2;
-      margin-bottom: 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.15);
-      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(80,227,194,0.25);
+      padding-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    #sidebar-2d .sidebar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #sidebar-2d .section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(80,227,194,0.7);
+      margin-bottom: 2px;
+    }
+
+    /* ── 2D HUD (inside sidebar) ─────────────────────────────── */
+    #ui-2d {
+      color: #fff;
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    #ui-2d .hud-title {
+      display: none; /* title is the sidebar header */
     }
 
     #ui-2d .hud-row {
-      margin: 5px 0;
+      margin: 4px 0;
+      display: flex;
+      justify-content: space-between;
     }
 
     #ui-2d .hud-label {
-      opacity: 0.7;
-      margin-right: 6px;
+      opacity: 0.6;
+      font-size: 12px;
     }
 
-    /* ── 2D Legend ───────────────────────────────────────────── */
+    /* ── 2D Legend (inside sidebar) ──────────────────────────── */
     #legend-2d {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
       color: #fff;
       font-size: 12px;
-      background: rgba(0,0,0,0.6);
-      padding: 12px 16px;
-      border-radius: 10px;
-      border: 1px solid rgba(80,227,194,0.2);
-      backdrop-filter: blur(5px);
       pointer-events: none;
     }
 
@@ -285,16 +306,11 @@
       vertical-align: middle;
     }
 
-    /* ── 2D Controls Help ────────────────────────────────────── */
+    /* ── 2D Controls Help (inside sidebar) ───────────────────── */
     #help-2d {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      color: rgba(255,255,255,0.65);
+      color: rgba(255,255,255,0.7);
       font-size: 11px;
-      background: rgba(0,0,0,0.5);
-      padding: 10px 14px;
-      border-radius: 8px;
+      line-height: 1.6;
       pointer-events: none;
     }
 
@@ -330,7 +346,7 @@
       <div id="mode-btn-2d" class="mode-card">
         <div class="icon">🗺️</div>
         <h2>2D Big World</h2>
-        <p>New! A massive 512 × 512 cellular automaton map. Pan &amp; zoom to explore the entire living world at once.</p>
+        <p>New! A massive 2000 × 2000 cellular automaton map. Pan &amp; zoom to explore the entire living world at once.</p>
       </div>
     </div>
 
@@ -439,31 +455,44 @@
     </div>
   </div>
 
-  <!-- ══ 2D HUD ════════════════════════════════════════════════════════════ -->
-  <div id="ui-2d" class="hidden">
-    <div class="hud-title">🧬 Genesis Protocol — 2D</div>
-    <div class="hud-row"><span class="hud-label">World:</span> <span id="size-2d">512×512</span></div>
-    <div class="hud-row"><span class="hud-label">Tick:</span> <span id="tick-2d" style="color:#50e3c2;font-weight:bold;">0</span></div>
-    <div class="hud-row"><span class="hud-label">Step:</span> <span id="speed-2d" style="color:#ff6b35;">100ms</span></div>
-    <div style="margin-top:10px;font-size:11px;opacity:0.6;">Drag to pan · Scroll to zoom · P = pause</div>
-  </div>
+  <!-- ══ 2D Sidebar (HUD + Legend + Help) — shown only in 2D mode ═══════════ -->
+  <div id="sidebar-2d" class="hidden">
+    <div class="sidebar-title">🎮 Game of Life</div>
 
-  <!-- ══ 2D Legend ═══════════════════════════════════════════════════════════ -->
-  <div id="legend-2d" class="hidden">
-    <div style="font-size:11px;opacity:0.7;margin-bottom:6px;">Cell States</div>
-    <div><span class="legend-dot" style="background:#4a90e2;"></span>Alive</div>
-    <div><span class="legend-dot" style="background:#ff6b35;"></span>Energized</div>
-    <div><span class="legend-dot" style="background:#50e3c2;"></span>Crystallized</div>
-    <div><span class="legend-dot" style="background:#8b2fc9;"></span>Corrupted</div>
-  </div>
+    <!-- Stats -->
+    <div class="sidebar-section">
+      <div class="section-label">Simulation</div>
+      <div id="ui-2d">
+        <div class="hud-row"><span class="hud-label">World</span> <span id="size-2d" style="color:#fff;">2000×2000</span></div>
+        <div class="hud-row"><span class="hud-label">Tick</span> <span id="tick-2d" style="color:#50e3c2;font-weight:bold;">0</span></div>
+        <div class="hud-row"><span class="hud-label">Step</span> <span id="speed-2d" style="color:#ff6b35;">100ms</span></div>
+      </div>
+    </div>
 
-  <!-- ══ 2D Help ═════════════════════════════════════════════════════════════ -->
-  <div id="help-2d" class="hidden">
-    <strong style="color:#50e3c2;">P</strong> Pause ·
-    <strong style="color:#50e3c2;">R</strong> Reset ·
-    <strong style="color:#50e3c2;">1-5</strong> Speed ·
-    <strong style="color:#50e3c2;">Scroll</strong> Zoom ·
-    <strong style="color:#50e3c2;">Drag</strong> Pan
+    <!-- Legend -->
+    <div class="sidebar-section">
+      <div class="section-label">Cell States</div>
+      <div id="legend-2d">
+        <div style="margin:3px 0;"><span class="legend-dot" style="background:#0a0c0a;"></span>Dead</div>
+        <div style="margin:3px 0;"><span class="legend-dot" style="background:#50dc50;"></span>Alive</div>
+      </div>
+      <div style="font-size:10px;opacity:0.6;margin-top:6px;">Rules: B3 / S23</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="sidebar-section">
+      <div class="section-label">Controls</div>
+      <div id="help-2d">
+        <div><strong style="color:#50e3c2;">Drag</strong> — Pan</div>
+        <div><strong style="color:#50e3c2;">Scroll</strong> — Zoom in/out</div>
+        <div><strong style="color:#50e3c2;">Arrows</strong> — Pan steps</div>
+        <div style="margin-top:6px;"><strong style="color:#50e3c2;">P / Space</strong> — Pause</div>
+        <div><strong style="color:#50e3c2;">R</strong> — Reset (new soup)</div>
+        <div><strong style="color:#50e3c2;">1–5</strong> — Speed preset</div>
+        <div><strong style="color:#50e3c2;">+ / −</strong> — Fine speed</div>
+        <div><strong style="color:#50e3c2;">0</strong> — Max speed</div>
+      </div>
+    </div>
   </div>
 
   <!-- ══ 3D HUD ══════════════════════════════════════════════════════════════ -->

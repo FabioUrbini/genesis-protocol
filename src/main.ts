@@ -5,7 +5,7 @@ import { Game2D } from './game/Game2D';
  * Main entry point for Genesis Protocol
  * Supports two world modes:
  *   - '3d'  : 3D voxel world (classic mode)
- *   - '2d'  : 2D big world (512×512 cellular automaton)
+ *   - '2d'  : 2D big world (2000×2000 cellular automaton)
  */
 
 // Get canvas element
@@ -45,9 +45,9 @@ function setupModeSelection(): void {
     btn3D!.classList.toggle('mode-btn-active', mode === '3d');
     btn2D!.classList.toggle('mode-btn-active', mode === '2d');
 
-    // Show the correct instructions panel
-    if (instructions3D) instructions3D.classList.toggle('hidden', mode !== '3d');
-    if (instructions2D) instructions2D.classList.toggle('hidden', mode !== '2d');
+    // Keep instructions hidden during mode selection — they'll show during gameplay
+    if (instructions3D) instructions3D.classList.add('hidden');
+    if (instructions2D) instructions2D.classList.add('hidden');
   }
 
   btn3D.addEventListener('click', () => selectMode('3d'));
@@ -142,13 +142,15 @@ async function init2D(): Promise<void> {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Show 2D HUD, legend, and help
-    const hud2D = document.getElementById('ui-2d');
-    if (hud2D) hud2D.classList.remove('hidden');
-    const legend2D = document.getElementById('legend-2d');
-    if (legend2D) legend2D.classList.remove('hidden');
-    const help2D = document.getElementById('help-2d');
-    if (help2D) help2D.classList.remove('hidden');
+    // Hide any instruction overlays that may be visible (3D and 2D instruction panels)
+    const instructions3D = document.getElementById('instructions');
+    const instructions2D = document.getElementById('instructions-2d');
+    if (instructions3D) instructions3D.classList.add('hidden');
+    if (instructions2D) instructions2D.classList.add('hidden');
+
+    // Show 2D sidebar (contains HUD, legend and help)
+    const sidebar2D = document.getElementById('sidebar-2d');
+    if (sidebar2D) sidebar2D.classList.remove('hidden');
 
     game2D = new Game2D(canvas);
     game2D.start();

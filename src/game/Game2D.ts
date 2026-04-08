@@ -1,64 +1,28 @@
 /**
  * Game2D - 2D Cellular Automaton game mode
- * A large 2D world (512×512 cells) rendered on a 2D canvas with pan/zoom support.
- * Uses Conway-style rules adapted from the Genesis Protocol CA rules.
+ * A large 2D world (2000×2000 cells) rendered on a 2D canvas with pan/zoom support.
+ * Uses Conway's Game of Life rules (B3/S23).
  */
 
-/** Cell states mirroring VoxelState */
+/** Cell states: classic Game of Life (Dead / Alive) */
 export enum CellState {
-  Dead        = 0,
-  Alive       = 1,
-  Energized   = 2,
-  Crystallized = 3,
-  Corrupted   = 4,
+  Dead  = 0,
+  Alive = 1,
 }
 
-const GRID_WIDTH  = 512;
-const GRID_HEIGHT = 512;
+const GRID_WIDTH  = 2000;
+const GRID_HEIGHT = 2000;
 
 /**
- * Apply 2D Genesis Protocol CA rules (Moore neighborhood, 8 neighbors)
+ * Conway's Game of Life rules (B3/S23)
+ * Birth: exactly 3 alive neighbors
+ * Survival: 2 or 3 alive neighbors
  */
-function nextState2D(current: number, alive: number, corrupted: number): number {
-  // Corruption spreads to vulnerable cells
-  if (corrupted > 0 && alive < 2) {
-    return CellState.Corrupted;
-  }
-
-  switch (current) {
-    case CellState.Dead:
-      // Birth: 3 alive neighbors (classic Conway birth)
-      if (alive === 3) return CellState.Alive;
-      return CellState.Dead;
-
-    case CellState.Alive:
-      // Energize: 6+ neighbors (overcrowding)
-      if (alive >= 6) return CellState.Energized;
-      // Crystallize: exactly 1 neighbor (isolation → stable)
-      if (alive === 1) return CellState.Crystallized;
-      // Survive: 2-3 neighbors (classic Conway survival)
-      if (alive === 2 || alive === 3) return CellState.Alive;
-      // Die otherwise
-      return CellState.Dead;
-
-    case CellState.Energized:
-      if (alive < 4) return CellState.Alive;
-      return CellState.Energized;
-
-    case CellState.Crystallized:
-      // Very stable – dies only if completely isolated
-      if (alive === 0) return CellState.Dead;
-      // Reverts to alive with sufficient neighbors
-      if (alive >= 3) return CellState.Alive;
-      return CellState.Crystallized;
-
-    case CellState.Corrupted:
-      // Dies out when isolated
-      if (alive < 1 && corrupted === 0) return CellState.Dead;
-      return CellState.Corrupted;
-
-    default:
-      return current;
+function nextState2D(current: number, alive: number): number {
+  if (current === CellState.Alive) {
+    return (alive === 2 || alive === 3) ? CellState.Alive : CellState.Dead;
+  } else {
+    return alive === 3 ? CellState.Alive : CellState.Dead;
   }
 }
 
@@ -78,7 +42,7 @@ export class Game2D {
   // Viewport / pan-zoom state
   private offsetX: number = 0;
   private offsetY: number = 0;
-  private cellSize: number = 2; // pixels per cell
+  private cellSize: number = 1; // pixels per cell (start at 1 for large world)
   private readonly MIN_CELL_SIZE = 1;
   private readonly MAX_CELL_SIZE = 32;
 
@@ -94,7 +58,7 @@ export class Game2D {
   private lastRenderTime: number = 0;
 
   // Simulation speed (ms per CA step)
-  private caIntervalMs: number = 100;
+  private caIntervalMs: number = 50;
 
   // Off-screen canvas for grid rendering
   private offscreen: HTMLCanvasElement;
@@ -127,26 +91,9 @@ export class Game2D {
   // ─── Initialization ────────────────────────────────────────────────────────
 
   private initializePattern(): void {
-    // Random clusters with biome-like regions
-    for (let y = 0; y < GRID_HEIGHT; y++) {
-      for (let x = 0; x < GRID_WIDTH; x++) {
-        const rx = (x / 20) | 0;
-        const ry = (y / 20) | 0;
-        const seed = (rx * 73856093) ^ (ry * 19349663);
-        const regionRandom = Math.abs(Math.sin(seed)) % 1;
-
-        let state: CellState = CellState.Dead;
-        if (regionRandom > 0.7) {
-          const r = Math.random();
-          if (r < 0.38)      state = CellState.Alive;
-          else if (r < 0.44) state = CellState.Energized;
-          else if (r < 0.46) state = CellState.Crystallized;
-        } else if (Math.random() < 0.01) {
-          state = CellState.Alive;
-        }
-
-        this.current[y * GRID_WIDTH + x] = state;
-      }
+    // Classic random soup: ~30% alive cells
+    for (let i = 0; i < GRID_WIDTH * GRID_HEIGHT; i++) {
+      this.current[i] = Math.random() < 0.30 ? CellState.Alive : CellState.Dead;
     }
     this.needsRender = true;
   }
@@ -167,31 +114,39 @@ export class Game2D {
     const cur = this.current;
     const nxt = this.next;
 
+    // Pre-compute row offsets for toroidal wrap
+    const rowPrev = new Int32Array(H);
+    const rowNext = new Int32Array(H);
     for (let y = 0; y < H; y++) {
+      rowPrev[y] = ((y - 1 + H) % H) * W;
+      rowNext[y] = ((y + 1) % H) * W;
+    }
+
+    for (let y = 0; y < H; y++) {
+      const rowY  = y * W;
+      const rowYm = rowPrev[y];
+      const rowYp = rowNext[y];
+
       for (let x = 0; x < W; x++) {
-        let alive = 0;
-        let corrupted = 0;
+        const xm = x === 0 ? W - 1 : x - 1;
+        const xp = x === W - 1 ? 0 : x + 1;
 
-        const xm = (x - 1 + W) % W;
-        const xp = (x + 1) % W;
-        const ym = (y - 1 + H) % H;
-        const yp = (y + 1) % H;
+        // 8 Moore neighbors — no array allocation
+        const n0 = cur[rowYm + xm];
+        const n1 = cur[rowYm + x];
+        const n2 = cur[rowYm + xp];
+        const n3 = cur[rowY  + xm];
+        const n4 = cur[rowY  + xp];
+        const n5 = cur[rowYp + xm];
+        const n6 = cur[rowYp + x];
+        const n7 = cur[rowYp + xp];
 
-        // 8 Moore neighbors (toroidal wrap)
-        const neighbors = [
-          cur[ym * W + xm], cur[ym * W + x], cur[ym * W + xp],
-          cur[y  * W + xm],                  cur[y  * W + xp],
-          cur[yp * W + xm], cur[yp * W + x], cur[yp * W + xp],
-        ];
+        // Count alive neighbors (unrolled)
+        const alive = (n0 === 1 ? 1 : 0) + (n1 === 1 ? 1 : 0) + (n2 === 1 ? 1 : 0)
+                    + (n3 === 1 ? 1 : 0) + (n4 === 1 ? 1 : 0) + (n5 === 1 ? 1 : 0)
+                    + (n6 === 1 ? 1 : 0) + (n7 === 1 ? 1 : 0);
 
-        for (const ns of neighbors) {
-          if (ns === CellState.Alive || ns === CellState.Energized || ns === CellState.Corrupted) {
-            alive++;
-          }
-          if (ns === CellState.Corrupted) corrupted++;
-        }
-
-        nxt[y * W + x] = nextState2D(cur[y * W + x], alive, corrupted);
+        nxt[rowY + x] = nextState2D(cur[rowY + x], alive);
       }
     }
 
@@ -202,7 +157,9 @@ export class Game2D {
 
     this.tickCount++;
     this.needsRender = true;
-    this.updateHUD();
+
+    // Throttle HUD DOM updates — only every 10 ticks
+    if (this.tickCount % 10 === 0) this.updateHUD();
   }
 
   // ─── Rendering ─────────────────────────────────────────────────────────────
@@ -216,14 +173,11 @@ export class Game2D {
 
     for (let i = 0; i < W * H; i++) {
       const state = cur[i];
-      let r = 10, g = 10, b = 18; // Dead default
-
-      switch (state) {
-        case CellState.Alive:        r = 74;  g = 144; b = 226; break; // blue
-        case CellState.Energized:    r = 255; g = 107; b = 53;  break; // orange
-        case CellState.Crystallized: r = 80;  g = 227; b = 194; break; // cyan
-        case CellState.Corrupted:    r = 139; g = 47;  b = 201; break; // purple
-      }
+      // Dead = black, Alive = bright green (classic GoL look)
+      const alive = state === CellState.Alive;
+      const r = alive ? 80  : 10;
+      const g = alive ? 220 : 12;
+      const b = alive ? 80  : 10;
 
       const p = i * 4;
       pixels[p]     = r;
