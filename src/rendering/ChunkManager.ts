@@ -1,8 +1,8 @@
-import { VoxelGrid } from '../core/VoxelGrid';
-import { WorldManager } from '../game/WorldManager';
-import { VoxelRenderer } from './VoxelRenderer';
-import { OrganicRenderer } from './OrganicRenderer';
-import { ChunkStorage } from '../game/ChunkStorage';
+﻿import { VoxelGrid } from '../core/VoxelGrid';
+import { WorldManager } from '../game/world/WorldManager';
+import { VoxelRenderer } from './renderers/VoxelRenderer';
+import { OrganicRenderer } from './renderers/OrganicRenderer';
+import { ChunkStorage } from '../game/world/ChunkStorage';
 import { Vector3 } from 'three';
 
 /**

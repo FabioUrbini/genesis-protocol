@@ -1,5 +1,5 @@
-import type { Game } from '../game/Game';
-import { GameModeType } from '../game/GameMode';
+﻿import type { Game } from '../game/Game';
+import { GameModeType } from '../game/systems/GameMode';
 import { UITheme } from './UITheme';
 
 export class GameModeUI {

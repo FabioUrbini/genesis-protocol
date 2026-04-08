@@ -1,5 +1,5 @@
-import { VoxelState } from './VoxelState';
-import { Pattern, PatternCategory } from '../game/PatternLibrary';
+﻿import { VoxelState } from './VoxelState';
+import { Pattern, PatternCategory } from '../game/systems/PatternLibrary';
 
 /**
  * Predefined 3D Game of Life patterns

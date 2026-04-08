@@ -1,9 +1,9 @@
-/**
+﻿/**
  * PatternLibraryUI.ts
  * Visual interface for the Pattern Library system
  */
 
-import { PatternLibrary, Pattern, PatternCategory } from '../game/PatternLibrary';
+import { PatternLibrary, Pattern, PatternCategory } from '../game/systems/PatternLibrary';
 
 export class PatternLibraryUI {
   private container: HTMLElement | null = null;

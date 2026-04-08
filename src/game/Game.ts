@@ -1,18 +1,18 @@
-import { CASimulator } from '../core/CASimulator';
+﻿import { CASimulator } from '../core/CASimulator';
 import { VoxelState } from '../core/VoxelState';
-import { VoxelRenderer } from '../rendering/VoxelRenderer';
-import { OrganicRenderer, RenderMode } from '../rendering/OrganicRenderer';
-import { PostProcessingManager } from '../rendering/PostProcessing';
-import { Player } from './Player';
-import { CASimulatorWorker } from '../workers/WorkerPool';
-import { TimeManipulation } from './TimeManipulation';
+import { VoxelRenderer } from '../rendering/renderers/VoxelRenderer';
+import { OrganicRenderer, RenderMode } from '../rendering/renderers/OrganicRenderer';
+import { PostProcessingManager } from '../rendering/effects/PostProcessing';
+import { Player } from './player/Player';
+import { CASimulatorWorker } from '../core/workers/WorkerPool';
+import { TimeManipulation } from './systems/TimeManipulation';
 import { Vector3 } from 'three';
-import { GameMode, GameModeType, SurvivalMode, ExplorerMode, ArchitectMode, PuzzleMode } from './GameMode';
-import { ProgressionSystem } from './ProgressionSystem';
-import { AchievementSystem } from './AchievementSystem';
-import { PatternCodex } from './PatternCodex';
-import { SaveSystem } from './SaveSystem';
-import { LeaderboardSystem } from './LeaderboardSystem';
+import { GameMode, GameModeType, SurvivalMode, ExplorerMode, ArchitectMode, PuzzleMode } from './systems/GameMode';
+import { ProgressionSystem } from './systems/ProgressionSystem';
+import { AchievementSystem } from './systems/AchievementSystem';
+import { PatternCodex } from './systems/PatternCodex';
+import { SaveSystem } from './systems/SaveSystem';
+import { LeaderboardSystem } from './systems/LeaderboardSystem';
 
 /**
  * Render style for the game

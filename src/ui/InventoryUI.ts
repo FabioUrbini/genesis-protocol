@@ -1,9 +1,9 @@
-/**
+﻿/**
  * InventoryUI.ts
  * Visual interface for the inventory system
  */
 
-import { InventorySystem, ResourceType, RESOURCE_INFO } from '../game/InventorySystem';
+import { InventorySystem, ResourceType, RESOURCE_INFO } from '../game/player/InventorySystem';
 
 export class InventoryUI {
   private container: HTMLElement | null = null;
