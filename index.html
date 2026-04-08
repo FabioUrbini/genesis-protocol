@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Genesis Protocol - 3D Cellular Automaton</title>
+  <title>Genesis Protocol - Cellular Automaton</title>
   <style>
     * {
       margin: 0;
@@ -134,6 +134,170 @@
       display: none;
     }
 
+    /* ── Mode Selection Screen ─────────────────────────────── */
+    #mode-selection {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.92);
+      z-index: 2000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      color: #fff;
+    }
+
+    #mode-selection h1 {
+      font-size: 36px;
+      margin-bottom: 6px;
+      letter-spacing: 2px;
+      color: #50e3c2;
+    }
+
+    #mode-selection .subtitle {
+      font-size: 14px;
+      opacity: 0.6;
+      margin-bottom: 40px;
+    }
+
+    .mode-cards {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 36px;
+    }
+
+    .mode-card {
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(80,227,194,0.25);
+      border-radius: 14px;
+      padding: 28px 32px;
+      width: 240px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      text-align: center;
+      user-select: none;
+    }
+
+    .mode-card:hover {
+      border-color: rgba(80,227,194,0.6);
+      background: rgba(80,227,194,0.08);
+      transform: translateY(-3px);
+    }
+
+    .mode-btn-active {
+      border-color: #50e3c2 !important;
+      background: rgba(80,227,194,0.15) !important;
+      box-shadow: 0 0 18px rgba(80,227,194,0.3);
+    }
+
+    .mode-card .icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .mode-card h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: #50e3c2;
+    }
+
+    .mode-card p {
+      font-size: 13px;
+      opacity: 0.75;
+      line-height: 1.5;
+    }
+
+    #start-btn {
+      background: linear-gradient(135deg, #50e3c2, #4a90e2);
+      color: #000;
+      border: none;
+      border-radius: 30px;
+      padding: 14px 52px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+
+    #start-btn:hover {
+      opacity: 0.88;
+      transform: scale(1.04);
+    }
+
+    /* ── 2D HUD ──────────────────────────────────────────────── */
+    #ui-2d {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: #fff;
+      font-size: 13px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.6);
+      padding: 14px 18px;
+      border-radius: 10px;
+      border: 1px solid rgba(80,227,194,0.25);
+      backdrop-filter: blur(5px);
+      pointer-events: none;
+      min-width: 200px;
+    }
+
+    #ui-2d .hud-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #50e3c2;
+      margin-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+      padding-bottom: 6px;
+    }
+
+    #ui-2d .hud-row {
+      margin: 5px 0;
+    }
+
+    #ui-2d .hud-label {
+      opacity: 0.7;
+      margin-right: 6px;
+    }
+
+    /* ── 2D Legend ───────────────────────────────────────────── */
+    #legend-2d {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: #fff;
+      font-size: 12px;
+      background: rgba(0,0,0,0.6);
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(80,227,194,0.2);
+      backdrop-filter: blur(5px);
+      pointer-events: none;
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* ── 2D Controls Help ────────────────────────────────────── */
+    #help-2d {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      color: rgba(255,255,255,0.65);
+      font-size: 11px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px 14px;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
     #help {
       position: absolute;
       bottom: 20px;
@@ -148,6 +312,30 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
+
+  <!-- ══ Mode Selection Screen ══════════════════════════════════════════════ -->
+  <div id="mode-selection" class="hidden">
+    <h1>🧬 GENESIS PROTOCOL</h1>
+    <p class="subtitle">Select your world before starting</p>
+
+    <div class="mode-cards">
+      <!-- 3D World -->
+      <div id="mode-btn-3d" class="mode-card">
+        <div class="icon">🌐</div>
+        <h2>3D World</h2>
+        <p>Classic mode — explore a living 3D voxel universe. Use mouse &amp; keyboard to navigate freely in first-person.</p>
+      </div>
+
+      <!-- 2D Big World -->
+      <div id="mode-btn-2d" class="mode-card">
+        <div class="icon">🗺️</div>
+        <h2>2D Big World</h2>
+        <p>New! A massive 512 × 512 cellular automaton map. Pan &amp; zoom to explore the entire living world at once.</p>
+      </div>
+    </div>
+
+    <button id="start-btn">▶ START</button>
+  </div>
 
   <!-- Top-center tick counter (always visible during gameplay) -->
   <div id="tick-top-container" class="hidden" style="
@@ -176,6 +364,45 @@
     <div style="font-size: 16px; margin-top: 10px;">Loading...</div>
   </div>
 
+  <!-- ══ 2D Instructions (shown inside mode-selection for 2D mode) ══════════ -->
+  <div id="instructions-2d" class="hidden" style="
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    text-align: center;
+    background: rgba(0,0,0,0.88);
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 500px;
+    pointer-events: none;
+    z-index: 500;
+  ">
+    <h2 style="margin-bottom:16px;font-size:24px;">🗺️ 2D Big World</h2>
+    <p style="font-size:13px;color:#e8e8e8;margin-bottom:12px;">
+      <strong style="color:#4a90e2;">Blue</strong> = Alive ·
+      <strong style="color:#ff6b35;">Orange</strong> = Energized ·
+      <strong style="color:#50e3c2;">Cyan</strong> = Crystallized ·
+      <strong style="color:#8b2fc9;">Purple</strong> = Corrupted
+    </p>
+    <div style="text-align:left;margin-top:18px;font-size:13px;">
+      <div style="color:#50e3c2;font-weight:bold;margin-bottom:8px;">✦ Navigation</div>
+      <div><span class="key">Mouse Drag</span> — Pan around the world</div>
+      <div><span class="key">Scroll Wheel</span> — Zoom in / out</div>
+      <div><span class="key">Arrow Keys</span> — Pan in steps</div>
+      <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;">
+        <div style="color:#50e3c2;font-weight:bold;margin-bottom:8px;">✦ Simulation</div>
+        <div><span class="key">P / Space</span> — Pause / Resume</div>
+        <div><span class="key">R</span> — Reset world</div>
+        <div><span class="key">1 – 5</span> — Speed presets (1=slow, 5=fast)</div>
+        <div><span class="key">+ / -</span> — Fine-tune speed</div>
+        <div><span class="key">0</span> — Maximum speed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 3D Instructions ═════════════════════════════════════════════════════ -->
   <div id="instructions">
     <h2>🧬 Genesis Protocol</h2>
     <p>Explore a living 3D world where voxels follow cellular automaton rules.</p>
@@ -212,6 +439,34 @@
     </div>
   </div>
 
+  <!-- ══ 2D HUD ════════════════════════════════════════════════════════════ -->
+  <div id="ui-2d" class="hidden">
+    <div class="hud-title">🧬 Genesis Protocol — 2D</div>
+    <div class="hud-row"><span class="hud-label">World:</span> <span id="size-2d">512×512</span></div>
+    <div class="hud-row"><span class="hud-label">Tick:</span> <span id="tick-2d" style="color:#50e3c2;font-weight:bold;">0</span></div>
+    <div class="hud-row"><span class="hud-label">Step:</span> <span id="speed-2d" style="color:#ff6b35;">100ms</span></div>
+    <div style="margin-top:10px;font-size:11px;opacity:0.6;">Drag to pan · Scroll to zoom · P = pause</div>
+  </div>
+
+  <!-- ══ 2D Legend ═══════════════════════════════════════════════════════════ -->
+  <div id="legend-2d" class="hidden">
+    <div style="font-size:11px;opacity:0.7;margin-bottom:6px;">Cell States</div>
+    <div><span class="legend-dot" style="background:#4a90e2;"></span>Alive</div>
+    <div><span class="legend-dot" style="background:#ff6b35;"></span>Energized</div>
+    <div><span class="legend-dot" style="background:#50e3c2;"></span>Crystallized</div>
+    <div><span class="legend-dot" style="background:#8b2fc9;"></span>Corrupted</div>
+  </div>
+
+  <!-- ══ 2D Help ═════════════════════════════════════════════════════════════ -->
+  <div id="help-2d" class="hidden">
+    <strong style="color:#50e3c2;">P</strong> Pause ·
+    <strong style="color:#50e3c2;">R</strong> Reset ·
+    <strong style="color:#50e3c2;">1-5</strong> Speed ·
+    <strong style="color:#50e3c2;">Scroll</strong> Zoom ·
+    <strong style="color:#50e3c2;">Drag</strong> Pan
+  </div>
+
+  <!-- ══ 3D HUD ══════════════════════════════════════════════════════════════ -->
   <div id="ui" class="hidden">
     <div style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; margin-bottom: 10px;">
       <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">

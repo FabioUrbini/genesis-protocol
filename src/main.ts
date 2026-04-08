@@ -1,7 +1,11 @@
 import { Game } from './game/Game';
+import { Game2D } from './game/Game2D';
 
 /**
  * Main entry point for Genesis Protocol
+ * Supports two world modes:
+ *   - '3d'  : 3D voxel world (classic mode)
+ *   - '2d'  : 2D big world (512×512 cellular automaton)
  */
 
 // Get canvas element
@@ -12,105 +16,181 @@ if (!canvas) {
 
 // Get UI elements
 const loadingElement = document.getElementById('loading');
-const uiElement = document.getElementById('ui');
 
-// Initialize game
-let game: Game | null = null;
+// Active game instances (only one runs at a time)
+let game3D: Game | null = null;
+let game2D: Game2D | null = null;
 
-async function init(): Promise<void> {
+// Currently selected world mode (set by mode selection screen)
+let selectedMode: '3d' | '2d' = '3d';
+
+// ─── Mode Selection ──────────────────────────────────────────────────────────
+
+/**
+ * Wire up the mode selection buttons in the menu screen
+ */
+function setupModeSelection(): void {
+  const btn3D = document.getElementById('mode-btn-3d');
+  const btn2D = document.getElementById('mode-btn-2d');
+  const modeScreen = document.getElementById('mode-selection');
+  const instructions3D = document.getElementById('instructions');
+  const instructions2D = document.getElementById('instructions-2d');
+
+  if (!btn3D || !btn2D || !modeScreen) return;
+
+  function selectMode(mode: '3d' | '2d'): void {
+    selectedMode = mode;
+
+    // Highlight active button
+    btn3D!.classList.toggle('mode-btn-active', mode === '3d');
+    btn2D!.classList.toggle('mode-btn-active', mode === '2d');
+
+    // Show the correct instructions panel
+    if (instructions3D) instructions3D.classList.toggle('hidden', mode !== '3d');
+    if (instructions2D) instructions2D.classList.toggle('hidden', mode !== '2d');
+  }
+
+  btn3D.addEventListener('click', () => selectMode('3d'));
+  btn2D.addEventListener('click', () => selectMode('2d'));
+
+  // Default: 3D mode selected
+  selectMode('3d');
+
+  // Start button
+  const startBtn = document.getElementById('start-btn');
+  if (startBtn) {
+    startBtn.addEventListener('click', async () => {
+      modeScreen.classList.add('hidden');
+      if (selectedMode === '2d') {
+        await init2D();
+      } else {
+        // 3D mode: show instructions, pointer lock will do the rest
+        if (instructions3D) instructions3D.classList.remove('hidden');
+        // Click the canvas to trigger pointer lock (3D mode listens for this)
+        await init3D();
+      }
+    });
+  }
+}
+
+// ─── 3D Mode ────────────────────────────────────────────────────────────────
+
+async function init3D(): Promise<void> {
   try {
-    console.warn('Initializing Genesis Protocol...');
-
-    // Create game instance
-    // Grid size: 32x32x32 voxels
-    // CA update interval: 2000ms (2 seconds)
-    game = new Game(canvas, 32, 2000);
-
-    // Hide loading screen
     if (loadingElement) {
-      loadingElement.classList.add('hidden');
+      loadingElement.classList.remove('hidden');
+      loadingElement.innerHTML = `<div>Genesis Protocol</div><div style="font-size:16px;margin-top:10px;">Loading 3D world…</div>`;
     }
 
-    // Show UI
-    if (uiElement) {
-      uiElement.classList.remove('hidden');
-    }
+    // Grid size: 32x32x32 voxels; CA update interval: 2000ms
+    game3D = new Game(canvas, 32, 2000);
 
-    // Start game loop
-    game.start();
+    if (loadingElement) loadingElement.classList.add('hidden');
 
-    console.warn('Genesis Protocol initialized successfully');
+    game3D.start();
+
+    // Keyboard shortcuts for 3D mode
+    document.addEventListener('keydown', on3DKeyDown);
+
+    console.warn('Genesis Protocol 3D mode initialized');
   } catch (error) {
-    console.error('Failed to initialize Genesis Protocol:', error);
+    console.error('Failed to initialize 3D mode:', error);
     if (loadingElement) {
       loadingElement.innerHTML = `
         <div>Genesis Protocol</div>
-        <div style="font-size: 16px; margin-top: 10px; color: #e74c3c;">
+        <div style="font-size:16px;margin-top:10px;color:#e74c3c;">
           Error: ${error instanceof Error ? error.message : 'Unknown error'}
         </div>
       `;
+      loadingElement.classList.remove('hidden');
     }
   }
 }
 
-// Handle page visibility change (pause when tab is hidden)
-document.addEventListener('visibilitychange', () => {
-  if (!game) return;
-
-  if (document.hidden) {
-    game.stop();
-  } else {
-    game.start();
-  }
-});
-
-// Handle keyboard shortcuts
-document.addEventListener('keydown', (event) => {
-  if (!game) return;
-
+function on3DKeyDown(event: KeyboardEvent): void {
+  if (!game3D) return;
   switch (event.key.toLowerCase()) {
     case 'r':
-      // Reset simulation
-      game.reset();
+      game3D.reset();
       console.warn('Simulation reset');
       break;
     case 'p':
-      // Toggle pause (P key)
       event.preventDefault();
-      game.timeManipulation.togglePause();
-      game.setCAUpdateInterval(game.timeManipulation.getUpdateInterval());
+      game3D.timeManipulation.togglePause();
+      game3D.setCAUpdateInterval(game3D.timeManipulation.getUpdateInterval());
       break;
     case 'z':
-      // Toggle reverse (rewind ticks at current speed)
-      game.timeManipulation.toggleReverse();
-      game.setCAUpdateInterval(game.timeManipulation.getUpdateInterval());
+      game3D.timeManipulation.toggleReverse();
+      game3D.setCAUpdateInterval(game3D.timeManipulation.getUpdateInterval());
       break;
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-    case '6':
-    case '7':
-    case '8':
-    case '9':
-    case '0': {
-      // Set speed level directly: 1-9 map to levels 1-9, 0 maps to level 10
+    case '1': case '2': case '3': case '4': case '5':
+    case '6': case '7': case '8': case '9': case '0': {
       const level = event.key === '0' ? 10 : parseInt(event.key);
-      game.timeManipulation.setSpeedLevel(level);
-      game.setCAUpdateInterval(game.timeManipulation.getUpdateInterval());
+      game3D.timeManipulation.setSpeedLevel(level);
+      game3D.setCAUpdateInterval(game3D.timeManipulation.getUpdateInterval());
       console.warn(`Speed level: ${level}/10`);
       break;
     }
   }
-});
+}
 
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-  if (game) {
-    game.dispose();
+// ─── 2D Mode ────────────────────────────────────────────────────────────────
+
+async function init2D(): Promise<void> {
+  try {
+    // Switch canvas to 2D context by resizing it
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Show 2D HUD, legend, and help
+    const hud2D = document.getElementById('ui-2d');
+    if (hud2D) hud2D.classList.remove('hidden');
+    const legend2D = document.getElementById('legend-2d');
+    if (legend2D) legend2D.classList.remove('hidden');
+    const help2D = document.getElementById('help-2d');
+    if (help2D) help2D.classList.remove('hidden');
+
+    game2D = new Game2D(canvas);
+    game2D.start();
+
+    console.warn('Genesis Protocol 2D mode initialized');
+  } catch (error) {
+    console.error('Failed to initialize 2D mode:', error);
+    if (loadingElement) {
+      loadingElement.innerHTML = `
+        <div>Genesis Protocol</div>
+        <div style="font-size:16px;margin-top:10px;color:#e74c3c;">
+          Error: ${error instanceof Error ? error.message : 'Unknown error'}
+        </div>
+      `;
+      loadingElement.classList.remove('hidden');
+    }
+  }
+}
+
+// ─── Visibility & Cleanup ───────────────────────────────────────────────────
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    game3D?.stop();
+    game2D?.stop();
+  } else {
+    game3D?.start();
+    game2D?.start();
   }
 });
 
-// Start initialization
-init().catch(console.error);
+window.addEventListener('beforeunload', () => {
+  game3D?.dispose();
+  game2D?.dispose();
+});
+
+// ─── Boot ───────────────────────────────────────────────────────────────────
+
+// Show mode selection screen on load; hide loading indicator
+if (loadingElement) loadingElement.classList.add('hidden');
+
+const modeScreen = document.getElementById('mode-selection');
+if (modeScreen) modeScreen.classList.remove('hidden');
+
+setupModeSelection();
